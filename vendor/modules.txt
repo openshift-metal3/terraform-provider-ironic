@@ -179,6 +179,9 @@ golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/openpgp/elgamal
+# golang.org/x/lint v0.0.0-20190301231843-5614ed5bae6f
+golang.org/x/lint/golint
+golang.org/x/lint
 # golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
 golang.org/x/net/context
 golang.org/x/net/html
@@ -196,6 +199,10 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/transform
 golang.org/x/text/secure/bidirule
 golang.org/x/text/unicode/bidi
+# golang.org/x/tools v0.0.0-20190228203856-589c23e65e65
+golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/internal/gcimporter
 # google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.14.0
