@@ -167,28 +167,28 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		d.SetId("")
 		return err
-	} else {
-		// TODO: Ironic's Create is different than the Node object itself, GET returns things like the
-		//  RaidConfig, we need to add those and handle them in CREATE?
-		d.Set("boot_interface", node.BootInterface)
-		d.Set("conductor_group", node.ConductorGroup)
-		d.Set("console_interface", node.ConsoleInterface)
-		d.Set("deploy_interface", node.DeployInterface)
-		d.Set("driver", node.Driver)
-		d.Set("driver_info", node.DriverInfo)
-		d.Set("extra", node.Extra)
-		d.Set("inspect_interface", node.InspectInterface)
-		d.Set("management_interface", node.ManagementInterface)
-		d.Set("name", node.Name)
-		d.Set("network_interface", node.NetworkInterface)
-		d.Set("owner", node.Owner)
-		d.Set("power_interface", node.PowerInterface)
-		d.Set("raid_interface", node.RAIDInterface)
-		d.Set("rescue_interface", node.RescueInterface)
-		d.Set("resource_class", node.ResourceClass)
-		d.Set("storage_interface", node.StorageInterface)
-		d.Set("vendor_interface", node.VendorInterface)
 	}
+
+	// TODO: Ironic's Create is different than the Node object itself, GET returns things like the
+	//  RaidConfig, we need to add those and handle them in CREATE?
+	d.Set("boot_interface", node.BootInterface)
+	d.Set("conductor_group", node.ConductorGroup)
+	d.Set("console_interface", node.ConsoleInterface)
+	d.Set("deploy_interface", node.DeployInterface)
+	d.Set("driver", node.Driver)
+	d.Set("driver_info", node.DriverInfo)
+	d.Set("extra", node.Extra)
+	d.Set("inspect_interface", node.InspectInterface)
+	d.Set("management_interface", node.ManagementInterface)
+	d.Set("name", node.Name)
+	d.Set("network_interface", node.NetworkInterface)
+	d.Set("owner", node.Owner)
+	d.Set("power_interface", node.PowerInterface)
+	d.Set("raid_interface", node.RAIDInterface)
+	d.Set("rescue_interface", node.RescueInterface)
+	d.Set("resource_class", node.ResourceClass)
+	d.Set("storage_interface", node.StorageInterface)
+	d.Set("vendor_interface", node.VendorInterface)
 
 	return nil
 }
