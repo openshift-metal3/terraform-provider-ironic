@@ -4,6 +4,31 @@
 
 This is a terraform provider that lets you provision baremetal servers managed by Ironic.
 
+# Usage
+
+Example:
+
+```
+provider "ironic" {
+  "url" = "http://localhost:6385/v1"
+  "microversion" = "1.50"
+}
+
+resource "ironic_node_v1" "openshift-master-0" {
+  name = "openshift-master-0"
+  driver = "ipmi"
+
+  driver_info {
+			"ipmi_port"=      "6230"
+			"ipmi_username"=  "admin"
+			"deploy_kernel"=  "http://172.22.0.1/images/tinyipa-stable-rocky.vmlinuz"
+			"ipmi_address"=   "192.168.122.1"
+			"deploy_ramdisk"= "http://172.22.0.1/images/tinyipa-stable-rocky.gz"
+			"ipmi_password"=  "admin"
+  }
+}
+```
+
 # License
 
 Apache 2.0, See LICENSE file

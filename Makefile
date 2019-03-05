@@ -1,14 +1,15 @@
 LDFLAGS += -X main.version=$$(git describe --always --abbrev=40 --dirty)
 TEST?=$$(go list ./... |grep -v 'vendor')
 PKG_NAME=ironic
+TERRAFORM_PLUGINS=$(HOME)/.terraform.d/plugins
 
 default: fmt lint build
 
 build:
 	go build -ldflags "${LDFLAGS}"
 
-install:
-	go install -ldflags "${LDFLAGS}"
+install: build
+	mv terraform-provider-ironic $(TERRAFORM_PLUGINS)
 
 fmt:
 	go fmt ./ironic .
