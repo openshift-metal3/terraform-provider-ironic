@@ -1,6 +1,7 @@
 package ironic
 
 import (
+	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -56,6 +57,9 @@ func resourceNodeV1() *schema.Resource {
 
 					return false
 				},
+
+				// driver_info could contain passwords
+				Sensitive: true,
 			},
 			"properties": {
 				Type:     schema.TypeMap,
@@ -69,6 +73,10 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "inspector",
+			},
+			"instance_info": {
+				Type:     schema.TypeMap,
+				Optional: true,
 			},
 			"management_interface": {
 				Type:     schema.TypeString,
@@ -118,6 +126,15 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 				Elem:     resourcePortV1(),
 			},
+			"target_provision_state": {
+				Type:     schema.TypeMap,
+				Optional: true,
+
+				// This did not change if the current provision state matches the target
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return d.Get("provision_state").(string) == old
+				},
+			},
 		},
 	}
 }
@@ -125,39 +142,59 @@ func resourceNodeV1() *schema.Resource {
 func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
 
-	createOpts := nodes.CreateOpts{
-		BootInterface:       d.Get("boot_interface").(string),
-		ConductorGroup:      d.Get("conductor_group").(string),
-		ConsoleInterface:    d.Get("console_interface").(string),
-		DeployInterface:     d.Get("deploy_interface").(string),
-		Driver:              d.Get("driver").(string),
-		DriverInfo:          d.Get("driver_info").(map[string]interface{}),
-		Extra:               d.Get("extra").(map[string]interface{}),
-		InspectInterface:    d.Get("inspect_interface").(string),
-		ManagementInterface: d.Get("management_interface").(string),
-		Name:                d.Get("name").(string),
-		NetworkInterface:    d.Get("network_interface").(string),
-		Owner:               d.Get("owner").(string),
-		PowerInterface:      d.Get("power_interface").(string),
-		RAIDInterface:       d.Get("raid_interface").(string),
-		RescueInterface:     d.Get("rescue_interface").(string),
-		ResourceClass:       d.Get("resource_class").(string),
-		StorageInterface:    d.Get("storage_interface").(string),
-		VendorInterface:     d.Get("vendor_interface").(string),
-	}
-
+	// Create the node
+	createOpts := schemaToCreateOpts(d)
 	result, err := nodes.Create(client, createOpts).Extract()
-
 	if err != nil {
 		d.SetId("")
 		return err
 	}
-
 	// Setting the ID is what tells terraform we were successful
-	log.Printf("[DEBUG] Node created with ID %s", d.Id())
+	log.Printf("[DEBUG] Node created with ID %s\n", d.Id())
 	d.SetId(result.UUID)
 
+	// Some fields can only be set in an update after create
+	updateOpts := postCreateUpdateOpts(d)
+	if len(updateOpts) > 0 {
+		log.Printf("[DEBUG] Node updates required, issuing updates: %+v\n", updateOpts)
+		_, err = nodes.Update(client, d.Id(), updateOpts).Extract()
+		if err != nil {
+			d.SetId("") // TODO: Should I do this if create succeeds, update fails?
+			return err
+		}
+	}
+
+	// Create ports
+	ports := d.Get("ports").(map[string]interface{})
+	if ports != nil {
+		// TODO the needful
+	}
+
+
+	// Target provision state is special, we need to drive ironic through it's state machine
+	// so, how we proceed is dependent on the current state of the node. We can rely on gophercloud
+	// utils to do this (TODO)
+	if d.Get("target_provision_State").(string) == "" {
+		// TODO the needful
+	}
+
 	return resourceNodeV1Read(d, meta)
+}
+
+func postCreateUpdateOpts(d *schema.ResourceData) nodes.UpdateOpts {
+	opts := nodes.UpdateOpts{}
+
+	instanceInfo := d.Get("instance_info").(map[string]interface{})
+	if instanceInfo != nil {
+		opts = append(opts, nodes.UpdateOperation{
+			Op:    nodes.AddOp,
+			Path:  "/instance_info",
+			Value: instanceInfo,
+		},
+		)
+	}
+
+	return opts
 }
 
 func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
@@ -198,66 +235,39 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 
 	d.Partial(true)
 
-	// TODO: Refactor this to be DRY and handle everything else we need to in an update
-	if d.HasChange("boot_interface") {
-		opts := nodes.UpdateOpts{
-			nodes.UpdateOperation{
-				Op:    nodes.ReplaceOp,
-				Path:  "/boot_interface",
-				Value: d.Get("boot_interface").(string),
-			},
-		}
-
-		if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
-			return err
-		}
+	stringFields := []string{
+		"boot_interface",
+		"conductor_group",
+		"console_interface",
+		"deploy_interface",
+		"driver",
+		"inspect_interface",
+		"management_interface",
+		"name",
+		"network_interface",
+		"owner",
+		"power_interface",
+		"raid_interface",
+		"rescue_interface",
+		"resource_class",
+		"storage_interface",
+		"vendor_interface",
 	}
 
-	if d.HasChange("conductor_group") {
-		opts := nodes.UpdateOpts{
-			nodes.UpdateOperation{
-				Op:    nodes.ReplaceOp,
-				Path:  "/boot_interface",
-				Value: d.Get("boot_interface").(string),
-			},
-		}
+	for _, field := range stringFields {
+		if d.HasChange(field) {
+			opts := nodes.UpdateOpts{
+				nodes.UpdateOperation{
+					Op:    nodes.ReplaceOp,
+					Path:  fmt.Sprintf("/%s", field),
+					Value: d.Get(field).(string),
+				},
+			}
 
-		if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
-			return err
+			if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
+				return err
+			}
 		}
-	}
-
-	if d.HasChange("console_interface") {
-	}
-	if d.HasChange("deploy_interface") {
-	}
-	if d.HasChange("driver") {
-	}
-	if d.HasChange("driver_info") {
-	}
-	if d.HasChange("extra") {
-	}
-	if d.HasChange("inspect_interface") {
-	}
-	if d.HasChange("management_interface") {
-	}
-	if d.HasChange("name") {
-	}
-	if d.HasChange("network_interface") {
-	}
-	if d.HasChange("owner") {
-	}
-	if d.HasChange("power_interface") {
-	}
-	if d.HasChange("raid_interface") {
-	}
-	if d.HasChange("rescue_interface") {
-	}
-	if d.HasChange("resource_class") {
-	}
-	if d.HasChange("storage_interface") {
-	}
-	if d.HasChange("vendor_interface") {
 	}
 
 	d.Partial(false)
@@ -268,4 +278,27 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
 	return nil
 
+}
+
+func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
+	return &nodes.CreateOpts{
+		BootInterface:       d.Get("boot_interface").(string),
+		ConductorGroup:      d.Get("conductor_group").(string),
+		ConsoleInterface:    d.Get("console_interface").(string),
+		DeployInterface:     d.Get("deploy_interface").(string),
+		Driver:              d.Get("driver").(string),
+		DriverInfo:          d.Get("driver_info").(map[string]interface{}),
+		Extra:               d.Get("extra").(map[string]interface{}),
+		InspectInterface:    d.Get("inspect_interface").(string),
+		ManagementInterface: d.Get("management_interface").(string),
+		Name:                d.Get("name").(string),
+		NetworkInterface:    d.Get("network_interface").(string),
+		Owner:               d.Get("owner").(string),
+		PowerInterface:      d.Get("power_interface").(string),
+		RAIDInterface:       d.Get("raid_interface").(string),
+		RescueInterface:     d.Get("rescue_interface").(string),
+		ResourceClass:       d.Get("resource_class").(string),
+		StorageInterface:    d.Get("storage_interface").(string),
+		VendorInterface:     d.Get("vendor_interface").(string),
+	}
 }
