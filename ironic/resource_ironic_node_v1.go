@@ -209,7 +209,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 
 	// Target provision state is special, we need to drive ironic through it's state machine
 	// to reach the desired state, which could be in multiple steps.
-	if target := d.Get("target_provision_state").(string); target == "" {
+	if target := d.Get("target_provision_state").(string); target != "" {
 		opts := nodes.ProvisionStateOpts{
 			Target: nodes.TargetProvisionState(target),
 			//TODO: Clean Steps, Rescue Password
@@ -445,6 +445,7 @@ func (workflow *workflow) toAvailable() (done bool, err error) {
 	switch state := workflow.node.ProvisionState; state {
 	// Not done, no error - Ironic is working
 	case "cleaning":
+		log.Printf("[DEBUG] Node %s is not done, still cleaning.", workflow.node.UUID)
 		return false, nil
 	// From manageable, we can go to provide
 	case "manageable":
@@ -496,5 +497,6 @@ func (workflow *workflow) refreshNode() error {
 }
 
 func (workflow *workflow) changeProvisionState(target nodes.TargetProvisionState) (done bool, err error) {
+	workflow.opts.Target = target
 	return false, nodes.ChangeProvisionState(workflow.client, workflow.uuid, workflow.opts).ExtractErr()
 }
