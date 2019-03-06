@@ -18,14 +18,8 @@ resource "ironic_node_v1" "openshift-master-0" {
     name = "openshift-master-0"
     driver = "ipmi"
 
-    target_provision_state = "active"
+    target_provision_state = "manage"
 
-    config_drive {
-        user_data {}
-        meta_data {}
-        network_data {}
-    }
-         
     instance_info {
         "image_source" = "http://172.22.0.1/images/rhcos.img"
         "image_checksum" = "http://172.22.0.1/images/rhcos.img.md5sum"     

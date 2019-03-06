@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
+	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+	"time"
 )
 
+// Schema resource definition for an Ironic node.
 func resourceNodeV1() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceNodeV1Create,
@@ -47,10 +50,8 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeMap,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					/* FIXME: Handle other drivers than IPMI, and we also need a way to detect the password
-					changed locally.  Ironic won't let us know if the password matches what we expect
-					in the read call, but we should at least issue an update if the local data has changed.
-					*/
+					/* FIXME: Password updates aren't considered. How can I know if the *local* data changed? */
+					/* FIXME: Support drivers other than IPMI */
 					if k == "driver_info.ipmi_password" && old == "******" {
 						return true
 					}
@@ -126,30 +127,66 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 				Elem:     resourcePortV1(),
 			},
+			"provision_state": {
+				Type: schema.TypeString,
+				Computed: true,
+			},
 			"target_provision_state": {
-				Type:     schema.TypeMap,
+				Type:     schema.TypeString,
 				Optional: true,
 
 				// This did not change if the current provision state matches the target
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return d.Get("provision_state").(string) == old
+				DiffSuppressFunc: targetStateMatchesReality,
+			},
+			"user_data": {
+				Type: schema.TypeString,
+				Optional: true,
+				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
+					return true
+				},
+			},
+			"network_data": {
+				Type: schema.TypeMap,
+				Optional: true,
+				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
+					return true
+				},
+			},
+			"metadata": {
+				Type: schema.TypeMap,
+				Optional: true,
+				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
+					return true
 				},
 			},
 		},
 	}
 }
+func targetStateMatchesReality(_, old, new string, d *schema.ResourceData) bool {
+	switch old {
+	case "manage":
+		return d.Get("provision_state").(string) == "manageable"
+	case "provide":
+		return d.Get("provision_state").(string) == "available"
+	case "active":
+		return d.Get("provision_state").(string) == "active"
+	}
+
+	return false
+}
 
 func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
 
-	// Create the node
+	// Create the node object in Ironic
 	createOpts := schemaToCreateOpts(d)
 	result, err := nodes.Create(client, createOpts).Extract()
 	if err != nil {
 		d.SetId("")
 		return err
 	}
-	// Setting the ID is what tells terraform we were successful
+
+	// Setting the ID is what tells terraform we were successful in creating the node
 	log.Printf("[DEBUG] Node created with ID %s\n", d.Id())
 	d.SetId(result.UUID)
 
@@ -159,7 +196,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		log.Printf("[DEBUG] Node updates required, issuing updates: %+v\n", updateOpts)
 		_, err = nodes.Update(client, d.Id(), updateOpts).Extract()
 		if err != nil {
-			d.SetId("") // TODO: Should I do this if create succeeds, update fails?
+			resourceNodeV1Read(d, meta)
 			return err
 		}
 	}
@@ -167,15 +204,41 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	// Create ports
 	ports := d.Get("ports").(map[string]interface{})
 	if ports != nil {
-		// TODO the needful
+		// TODO
 	}
 
-
 	// Target provision state is special, we need to drive ironic through it's state machine
-	// so, how we proceed is dependent on the current state of the node. We can rely on gophercloud
-	// utils to do this (TODO)
-	if d.Get("target_provision_State").(string) == "" {
-		// TODO the needful
+	// to reach the desired state, which could be in multiple steps.
+	if target := d.Get("target_provision_state").(string); target == "" {
+		opts := nodes.ProvisionStateOpts{
+			Target: nodes.TargetProvisionState(target),
+			//TODO: Clean Steps, Rescue Password
+		}
+
+		if target == "active" {
+			configDrive, err := utils.ConfigDrive{
+				UserData:    d.Get("user_data").(utils.UserDataString),
+				MetaData:    d.Get("meta_data").(map[string]interface{}),
+				NetworkData: d.Get("network_data").(map[string]interface{}),
+			}.ToConfigDrive()
+			if err != nil {
+				return err
+			}
+			opts.ConfigDrive = configDrive
+		}
+
+
+		wf := workflow{
+			opts: opts,
+			client: client,
+			uuid: d.Id(),
+		}
+
+		// Run the workflow - this could take a while
+		if err := wf.run(); err != nil {
+			resourceNodeV1Read(d, meta)
+			return err
+		}
 	}
 
 	return resourceNodeV1Read(d, meta)
@@ -226,6 +289,8 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("resource_class", node.ResourceClass)
 	d.Set("storage_interface", node.StorageInterface)
 	d.Set("vendor_interface", node.VendorInterface)
+	d.Set("provision_state", node.ProvisionState)
+	d.Set("target_provision_state", node.TargetProvisionState)
 
 	return nil
 }
@@ -301,4 +366,135 @@ func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 		StorageInterface:    d.Get("storage_interface").(string),
 		VendorInterface:     d.Get("vendor_interface").(string),
 	}
+}
+
+type workflow struct {
+	client *gophercloud.ServiceClient
+	uuid   string
+	opts   nodes.ProvisionStateOpts
+	wait   time.Duration
+	node   *nodes.Node
+}
+
+func (workflow *workflow) new() error {
+	return workflow.refreshNode()
+}
+
+// Keep driving the state machine forward
+func (workflow *workflow) run() (error) {
+	log.Printf("[INFO] Beginning provisioning workflow, will try to change node to state '%s'", workflow.opts.Target)
+
+	for {
+		done, err := workflow.next()
+		if done || err != nil {
+			return err
+		}
+
+		time.Sleep(workflow.wait)
+	}
+
+	return nil
+}
+
+func (workflow *workflow) next() (done bool, err error) {
+	// Refresh the node
+	if err := workflow.refreshNode(); err != nil {
+		return true, err
+	}
+
+	log.Printf("[DEBUG] Node current state is '%s'", workflow.node.ProvisionState)
+
+	switch target := workflow.opts.Target; target {
+	case nodes.TargetManage:
+		return workflow.toManageable()
+	case nodes.TargetProvide:
+		return workflow.toAvailable()
+	case nodes.TargetActive:
+		return workflow.toActive()
+	case nodes.TargetDeleted:
+		return workflow.toDeleted()
+	default:
+		return true, fmt.Errorf("unknown target state '%s'", target)
+	}
+}
+
+// Change a node to "manageable" stable
+func (workflow *workflow) toManageable() (done bool, err error) {
+	switch state := workflow.node.ProvisionState; state {
+	case "enroll",
+		"adopt failed",
+		"clean failed",
+		"insepct failed",
+		"available":
+		return workflow.changeProvisionState(nodes.TargetManage)
+	case "verifying":
+		workflow.wait = 15 * time.Second
+		return false, nil // not done, no error - Ironic is working
+	default:
+		// TODO: If node is not in a position to go back to manageable, we could delete it (ForceNew) and create it again
+		return true, fmt.Errorf("cannot go from state '%s' to state 'manageable'", state)
+	}
+
+	return false, nil
+}
+
+// Change a node to "available" state
+func (workflow *workflow) toAvailable() (done bool, err error) {
+	workflow.wait = 15 * time.Second
+
+	switch state := workflow.node.ProvisionState; state {
+	// Not done, no error - Ironic is working
+	case "cleaning":
+		return false, nil
+	// From manageable, we can go to provide
+	case "manageable":
+		return workflow.changeProvisionState(nodes.TargetProvide)
+	// Otherwise we have to get into manageable state first
+	default:
+		_, err := workflow.toManageable()
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	}
+}
+
+// Change a node to "active" state
+func (workflow *workflow) toActive() (bool, error) {
+	workflow.wait = 30 * time.Second
+
+	switch state := workflow.node.ProvisionState; state {
+	// Not done, no error - Ironic is working
+	case "deploying":
+		return false, nil
+	// From available, we can go to active
+	case "available":
+		return workflow.changeProvisionState(nodes.TargetActive)
+	// Otherwise we have to get into available state first
+	default:
+		_, err := workflow.toAvailable()
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	}
+}
+
+// Change a node to be "deleted"
+func (workflow *workflow) toDeleted() (bool, error) {
+	return false, nil
+}
+
+func (workflow *workflow) refreshNode() error {
+	node, err := nodes.Get(workflow.client, workflow.uuid).Extract()
+	if err != nil {
+		return err
+	}
+
+	workflow.node = node
+	return nil
+}
+
+func (workflow *workflow) changeProvisionState(target nodes.TargetProvisionState) (done bool, err error) {
+	return false, nodes.ChangeProvisionState(workflow.client, workflow.uuid, workflow.opts).ExtractErr()
 }
