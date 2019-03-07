@@ -31,6 +31,7 @@ github.com/google/go-cmp v0.2.0 h1:+dTQ8DZQJz0Mb/HjFlkptS1FeQ4cWSnN941F8aEG4SQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
 github.com/gophercloud/gophercloud v0.0.0-20190303224450-f83aee3da90f h1:hdmcBhTsp/vubg7Wg079F2ZaAQx5wV6ait8oFifj0WA=
 github.com/gophercloud/gophercloud v0.0.0-20190303224450-f83aee3da90f/go.mod h1:vxM41WHh5uqHVBMZHzuwNOHh8XEoIEcSTewFxm1c5g8=
+github.com/gophercloud/utils v0.0.0-20190303224639-576a1fcaba9d h1:qX3BBWUfdMFohXeNtp/4L8qruHvAly5m83UdCclEt3A=
 github.com/hashicorp/errwrap v0.0.0-20180715044906-d6c0cd880357/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=

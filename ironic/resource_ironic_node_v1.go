@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
+	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports"
 	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
@@ -125,7 +126,9 @@ func resourceNodeV1() *schema.Resource {
 			"ports": {
 				Type:     schema.TypeSet,
 				Optional: true,
-				Elem:     resourcePortV1(),
+				Elem: 	  &schema.Schema{
+					Type: schema.TypeMap,
+				},
 			},
 			"provision_state": {
 				Type:     schema.TypeString,
@@ -203,10 +206,35 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// Create ports
-	ports := d.Get("ports").(map[string]interface{})
-	if ports != nil {
-		// TODO
+	// Create the ports for our node - I can't seem to get nested resources working correctly on Terraform FIXME
+	portSet := d.Get("ports").(*schema.Set)
+	if portSet != nil {
+		portList := portSet.List()
+		for _, portInterface := range portList {
+			port := portInterface.(map[string]interface{})
+
+			// Terraform map can't handle bool... seriously.
+			var pxeEnabled bool
+			if port["pxe_enabled"] != nil {
+				if port["pxe_enabled"] == "true" {
+					pxeEnabled = true
+				} else {
+					pxeEnabled = false
+				}
+
+			}
+			// FIXME all values other than address and pxe
+			portCreateOpts := ports.CreateOpts{
+				NodeUUID:   d.Id(),
+				Address:    port["address"].(string),
+				PXEEnabled: &pxeEnabled,
+			}
+			_, err := ports.Create(client, portCreateOpts).Extract()
+			if err != nil {
+				resourcePortV1Read(d, meta)
+				return err
+			}
+		}
 	}
 
 	// target_provision_state is special, we need to drive ironic through it's state machine
@@ -233,6 +261,7 @@ func postCreateUpdateOpts(d *schema.ResourceData) nodes.UpdateOpts {
 		)
 	}
 
+
 	return opts
 }
 
@@ -246,7 +275,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// TODO: Ironic's Create is different than the Node object itself, GET returns things like the
-	//  RaidConfig, we need to add those and handle them in CREATE?
+	//  RaidConfig, we need to add those and handle them in CREATE
 	d.Set("boot_interface", node.BootInterface)
 	d.Set("conductor_group", node.ConductorGroup)
 	d.Set("console_interface", node.ConsoleInterface)
@@ -449,8 +478,8 @@ func (workflow *provisionStateWorkflow) toAvailable() (done bool, err error) {
 		return true, nil
 	case "cleaning":
 		// Not done, no error - Ironic is working
+		log.Printf("[DEBUG] Node %s is still 'cleaning', waiting for Ironic to finish.", workflow.d.Id())
 		return false, nil
-		log.Printf("[DEBUG] Node %s is not done, still cleaning.", workflow.d.Id())
 	case "manageable":
 		// From manageable, we can go to provide
 		log.Printf("[DEBUG] Node %s is manageable, going to change to 'available'", workflow.d.Id())
@@ -498,9 +527,11 @@ func (workflow *provisionStateWorkflow) toActive() (bool, error) {
 
 // Change a node to be "deleted"
 func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
+	// TODO
 	return false, nil
 }
 
+// Builds the ProvsiionStateOpts to send to Ironic -- including config drive.
 func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.TargetProvisionState) (*nodes.ProvisionStateOpts, error) {
 	opts := nodes.ProvisionStateOpts{
 		Target: target,
