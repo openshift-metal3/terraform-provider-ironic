@@ -126,7 +126,7 @@ func resourceNodeV1() *schema.Resource {
 			"ports": {
 				Type:     schema.TypeSet,
 				Optional: true,
-				Elem: 	  &schema.Schema{
+				Elem: &schema.Schema{
 					Type: schema.TypeMap,
 				},
 			},
@@ -165,6 +165,8 @@ func resourceNodeV1() *schema.Resource {
 		},
 	}
 }
+
+// Match up Ironic verbs and nouns for target_provision_state
 func targetStateMatchesReality(_, old, new string, d *schema.ResourceData) bool {
 	log.Printf("[DEBUG] Current state is '%s', target is '%s'\n", d.Get("provision_state").(string), new)
 
@@ -180,6 +182,7 @@ func targetStateMatchesReality(_, old, new string, d *schema.ResourceData) bool 
 	return false
 }
 
+// Create a node, including driving Ironic's state machine
 func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
 
@@ -206,7 +209,9 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// Create the ports for our node - I can't seem to get nested resources working correctly on Terraform FIXME
+	// FIXME - This is ugly, but terraform doesn't handle nested resources well :-( We need the port created
+	// in the middle of the process, after we create the node but before we start deploying it.  Maybe
+	// there's a better solution.
 	portSet := d.Get("ports").(*schema.Set)
 	if portSet != nil {
 		portList := portSet.List()
@@ -248,6 +253,9 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	return resourceNodeV1Read(d, meta)
 }
 
+// All the options that need to be updated on the node, post-create.  Not everything
+// can be created through the POST to /v1/nodes.  TODO: The rest of the fields other
+// than instance_info.
 func postCreateUpdateOpts(d *schema.ResourceData) nodes.UpdateOpts {
 	opts := nodes.UpdateOpts{}
 
@@ -261,10 +269,10 @@ func postCreateUpdateOpts(d *schema.ResourceData) nodes.UpdateOpts {
 		)
 	}
 
-
 	return opts
 }
 
+// Read the node's data from Ironic
 func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
 
@@ -300,6 +308,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
+// Update a node's state based on the terraform config - TODO: handle everything
 func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
 
@@ -352,11 +361,14 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 	return resourceNodeV1Read(d, meta)
 }
 
+// TODO: handle node deletion
 func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
 	return nil
 
 }
 
+// Convert terraform schema to gophercloud CreateOpts
+// TODO: Is there a better way to do this? Annotations?
 func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 	return &nodes.CreateOpts{
 		BootInterface:       d.Get("boot_interface").(string),

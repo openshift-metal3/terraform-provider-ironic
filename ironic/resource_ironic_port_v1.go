@@ -96,14 +96,14 @@ func portSchemaToCreateOpts(d *schema.ResourceData) *ports.CreateOpts {
 	isSmartNic := d.Get("is_smart_nic").(bool)
 
 	opts := ports.CreateOpts{
-		NodeUUID:            d.Get("node_uuid").(string),
-		Address:             d.Get("address").(string),
-		PortGroupUUID:       d.Get("port_group_uuid").(string),
+		NodeUUID:      d.Get("node_uuid").(string),
+		Address:       d.Get("address").(string),
+		PortGroupUUID: d.Get("port_group_uuid").(string),
 		//LocalLinkConnection: d.Get("local_link_collection").(map[string]interface{}),
-		PXEEnabled:          &pxeEnabled,
-		PhysicalNetwork:     d.Get("physical_network").(string),
+		PXEEnabled:      &pxeEnabled,
+		PhysicalNetwork: d.Get("physical_network").(string),
 		//Extra:               d.Get("extra").(map[string]interface{}),
-		IsSmartNIC:          &isSmartNic,
+		IsSmartNIC: &isSmartNic,
 	}
 
 	return &opts
