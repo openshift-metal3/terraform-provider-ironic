@@ -8,7 +8,7 @@ This is a terraform provider that lets you provision baremetal servers managed b
 
 Example:
 
-```
+```terraform
 provider "ironic" {
   "url" = "http://localhost:6385/v1"
   "microversion" = "1.50"
