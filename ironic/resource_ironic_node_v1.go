@@ -490,11 +490,11 @@ func (workflow *provisionStateWorkflow) toAvailable() (done bool, err error) {
 		return true, nil
 	case "cleaning":
 		// Not done, no error - Ironic is working
-		log.Printf("[DEBUG] Node %s is still 'cleaning', waiting for Ironic to finish.", workflow.d.Id())
+		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
 		return false, nil
 	case "manageable":
 		// From manageable, we can go to provide
-		log.Printf("[DEBUG] Node %s is manageable, going to change to 'available'", workflow.d.Id())
+		log.Printf("[DEBUG] Node %s is '%s', going to change to 'available'", workflow.d.Id(), state)
 		return workflow.changeProvisionState(nodes.TargetProvide)
 	default:
 		// Otherwise we have to get into manageable state first
@@ -520,7 +520,7 @@ func (workflow *provisionStateWorkflow) toActive() (bool, error) {
 	case "deploying",
 		"wait call-back":
 		// Not done, no error - Ironic is working
-		log.Printf("[DEBUG] Node %s is still 'deplyoing', waiting for Ironic to finish.", workflow.d.Id())
+		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
 		return false, nil
 	case "available":
 		// From available, we can go to active
