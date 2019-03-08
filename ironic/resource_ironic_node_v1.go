@@ -517,7 +517,8 @@ func (workflow *provisionStateWorkflow) toActive() (bool, error) {
 		// We're done!
 		log.Printf("[DEBUG] Node %s is 'active', we are done.", workflow.d.Id())
 		return true, nil
-	case "deploying":
+	case "deploying",
+		"wait call-back":
 		// Not done, no error - Ironic is working
 		log.Printf("[DEBUG] Node %s is still 'deplyoing', waiting for Ironic to finish.", workflow.d.Id())
 		return false, nil
