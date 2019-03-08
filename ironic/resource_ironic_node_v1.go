@@ -144,22 +144,22 @@ func resourceNodeV1() *schema.Resource {
 			"user_data": {
 				Type:     schema.TypeString,
 				Optional: true,
-				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
-					return true
+				DiffSuppressFunc: func(_, _, _ string, d *schema.ResourceData) bool {
+					return !d.IsNewResource()
 				},
 			},
 			"network_data": {
 				Type:     schema.TypeMap,
 				Optional: true,
-				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
-					return true
+				DiffSuppressFunc: func(_, _, _ string, d *schema.ResourceData) bool {
+					return !d.IsNewResource()
 				},
 			},
 			"metadata": {
 				Type:     schema.TypeMap,
 				Optional: true,
-				DiffSuppressFunc: func(_, _, _ string, _ *schema.ResourceData) bool {
-					return true
+				DiffSuppressFunc: func(_, _, _ string, d *schema.ResourceData) bool {
+					return !d.IsNewResource()
 				},
 			},
 		},
@@ -551,8 +551,10 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 	}
 
 	// If we're deploying, then build a config drive to send to Ironic
-	if target == "active" {
+//	if target == "active" {
 		configDrive := utils.ConfigDrive{}
+
+		log.Printf("USER DATA IS %s", workflow.d.Get("user_data").(string))
 
 		if userData := utils.UserDataString(workflow.d.Get("user_data").(string)); userData != "" {
 			configDrive.UserData = userData
@@ -574,7 +576,7 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 
 		// FIXME - remove me, or write the ISO to a file or something
 		log.Printf("[DEBUG] ConfigDrive Data: %s", configDriveData)
-	}
+//	}
 
 	return &opts, nil
 }
