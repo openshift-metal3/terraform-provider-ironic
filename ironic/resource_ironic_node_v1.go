@@ -571,6 +571,9 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 			return nil, err
 		}
 		opts.ConfigDrive = configDriveData
+
+		// FIXME - remove me, or write the ISO to a file or something
+		log.Printf("[DEBUG] ConfigDrive Data: %s", configDriveData)
 	}
 
 	return &opts, nil
