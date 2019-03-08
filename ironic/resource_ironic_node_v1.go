@@ -546,8 +546,6 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 	if target == "active" {
 		configDrive := utils.ConfigDrive{}
 
-		log.Printf("USER DATA IS %s", workflow.d.Get("user_data").(string))
-
 		if userData := utils.UserDataString(workflow.d.Get("user_data").(string)); userData != "" {
 			configDrive.UserData = userData
 		}
@@ -565,9 +563,6 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 			return nil, err
 		}
 		opts.ConfigDrive = configDriveData
-
-		// FIXME - remove me, or write the ISO to a file or something
-		log.Printf("[DEBUG] ConfigDrive Data: %s", configDriveData)
 	}
 
 	return &opts, nil
