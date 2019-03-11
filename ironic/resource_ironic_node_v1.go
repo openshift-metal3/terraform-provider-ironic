@@ -481,8 +481,7 @@ func (workflow *provisionStateWorkflow) toAvailable() (done bool, err error) {
 	case "available":
 		// We're done!
 		return true, nil
-	case "cleaning",
-	  "deleting":
+	case "cleaning":
 		// Not done, no error - Ironic is working
 		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
 		return false, nil
@@ -539,7 +538,8 @@ func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
 		// We're done deleting the node, we can now remove the object
 		err := nodes.Delete(workflow.client, workflow.d.Id()).ExtractErr()
 		return true, err
-	case "cleaning":
+	case "cleaning",
+		"deleting":
 		// Not done, no error - Ironic is working
 		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
 		return false, nil
