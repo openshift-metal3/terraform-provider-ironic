@@ -353,10 +353,11 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 	return resourceNodeV1Read(d, meta)
 }
 
-// TODO: handle node deletion
+// Delete a node from Ironic
 func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
-	return nil
-
+	client := meta.(*gophercloud.ServiceClient)
+	d.Set("target_provision_state", "deleted")
+	return changeProvisionStateToTarget(d, client)
 }
 
 // Convert terraform schema to gophercloud CreateOpts
