@@ -16,6 +16,3 @@ import:
   vcs: git
   subpackages:
   - openstack/baremetal/v1/nodes
-- package: golang.org/x/lint
-  subpackages:
-  - golint
