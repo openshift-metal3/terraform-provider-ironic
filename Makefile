@@ -14,7 +14,10 @@ install: build
 fmt:
 	go fmt ./ironic .
 
-lint:
+tools:
+	go get golang.org/x/lint/golint
+
+lint: tools
 	go run golang.org/x/lint/golint -set_exit_status ./ironic .
 
 test:
