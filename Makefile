@@ -8,8 +8,9 @@ default: fmt lint build
 build:
 	go build -ldflags "${LDFLAGS}"
 
-install: build
-	mv terraform-provider-ironic $(TERRAFORM_PLUGINS)
+install: default
+	mkdir -p ${TERRAFORM_PLUGINS}
+	mv terraform-provider-ironic ${TERRAFORM_PLUGINS}
 
 fmt:
 	go fmt ./ironic .
