@@ -1,0 +1,22 @@
+hash: 4866053a44ae9147a219f91de697c024a1e4a9326ecb6a0dab4e61e9c88ec634
+updated: 2019-03-12T09:51:39.280511718-04:00
+imports:
+- name: github.com/gophercloud/gophercloud
+  version: fe1ba5ce12dda9d3056d303dfe080d5eccdd1780
+  subpackages:
+  - openstack/baremetal/noauth
+  - openstack/baremetal/v1/nodes
+  - openstack/baremetal/v1/ports
+- name: github.com/gophercloud/utils
+  version: fd87386fb685cf9f1b87ee8ecc7171e2cac5bb34
+  repo: https://github.com/stbenjam/utils.git
+  vcs: git
+  subpackages:
+  - openstack/baremetal/v1/nodes
+- name: github.com/hashicorp/terraform
+  version: 4de0b33097bd599fca83b0e9a8c7bb5987c2ceab
+  subpackages:
+  - helper/schema
+  - plugin
+  - terraform
+testImports: []
