@@ -1,4 +1,4 @@
-package: github.com/metalkube/terraform-provider-ironic
+package: github.com/openshift-metalkube/terraform-provider-ironic
 import:
 - package: github.com/gophercloud/gophercloud
   subpackages:

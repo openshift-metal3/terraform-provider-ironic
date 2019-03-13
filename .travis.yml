@@ -5,7 +5,7 @@ go:
   - 1.11.x
 git:
   depth: 1
-  go_import_path: github.com/metalkube/terraform-provider-ironic
+  go_import_path: github.com/openshift-metalkube/terraform-provider-ironic
 install:        true
 before_script:
   - curl -sLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/0.11.10/terraform_0.11.10_linux_amd64.zip
