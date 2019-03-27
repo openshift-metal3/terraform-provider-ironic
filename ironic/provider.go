@@ -3,10 +3,11 @@ package ironic
 import (
 	"github.com/gophercloud/gophercloud/openstack/baremetal/noauth"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/terraform"
 )
 
 // Provider Ironic
-func Provider() *schema.Provider {
+func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"url": {
