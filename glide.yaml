@@ -11,8 +11,5 @@ import:
   - plugin
   - terraform
 - package: github.com/gophercloud/utils
-  version: configdrive
-  repo: https://github.com/stbenjam/utils.git
-  vcs: git
   subpackages:
   - openstack/baremetal/v1/nodes
