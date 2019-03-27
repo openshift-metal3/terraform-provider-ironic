@@ -289,6 +289,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("network_interface", node.NetworkInterface)
 	d.Set("owner", node.Owner)
 	d.Set("power_interface", node.PowerInterface)
+	d.Set("properties", node.Properties)
 	d.Set("raid_interface", node.RAIDInterface)
 	d.Set("rescue_interface", node.RescueInterface)
 	d.Set("resource_class", node.ResourceClass)
@@ -348,6 +349,20 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	properties := d.Get("properties").(map[string]interface{})
+	if properties != nil {
+		opts := nodes.UpdateOpts{
+			nodes.UpdateOperation{
+				Op:    nodes.AddOp,
+				Path:  "/properties",
+				Value: properties,
+			},
+		}
+		if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
+			return err
+		}
+	}
+
 	d.Partial(false)
 
 	return resourceNodeV1Read(d, meta)
@@ -377,6 +392,7 @@ func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 		NetworkInterface:    d.Get("network_interface").(string),
 		Owner:               d.Get("owner").(string),
 		PowerInterface:      d.Get("power_interface").(string),
+		Properties:          d.Get("properties").(map[string]interface{}),
 		RAIDInterface:       d.Get("raid_interface").(string),
 		RescueInterface:     d.Get("rescue_interface").(string),
 		ResourceClass:       d.Get("resource_class").(string),
