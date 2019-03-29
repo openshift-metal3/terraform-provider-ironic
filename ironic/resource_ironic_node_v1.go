@@ -67,6 +67,10 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeMap,
 				Optional: true,
 			},
+			"root_device": {
+				Type:     schema.TypeMap,
+				Optional: true,
+			},
 			"extra": {
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -289,6 +293,9 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("network_interface", node.NetworkInterface)
 	d.Set("owner", node.Owner)
 	d.Set("power_interface", node.PowerInterface)
+	d.Set("root_device", node.Properties["root_device"])
+	delete(node.Properties, "root_device")
+	d.Set("properties", node.Properties)
 	d.Set("raid_interface", node.RAIDInterface)
 	d.Set("rescue_interface", node.RescueInterface)
 	d.Set("resource_class", node.ResourceClass)
@@ -348,6 +355,20 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	if d.HasChange("properties") || d.HasChange("root_device") {
+		properties := propertiesMerge(d, "root_device")
+		opts := nodes.UpdateOpts{
+			nodes.UpdateOperation{
+				Op:    nodes.AddOp,
+				Path:  "/properties",
+				Value: properties,
+			},
+		}
+		if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
+			return err
+		}
+	}
+
 	d.Partial(false)
 
 	return resourceNodeV1Read(d, meta)
@@ -360,9 +381,16 @@ func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
 	return changeProvisionStateToTarget(d, client)
 }
 
+func propertiesMerge(d *schema.ResourceData, key string) map[string]interface{} {
+	properties := d.Get("properties").(map[string]interface{})
+	properties[key] = d.Get(key).(map[string]interface{})
+	return properties
+}
+
 // Convert terraform schema to gophercloud CreateOpts
 // TODO: Is there a better way to do this? Annotations?
 func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
+	properties := propertiesMerge(d, "root_device")
 	return &nodes.CreateOpts{
 		BootInterface:       d.Get("boot_interface").(string),
 		ConductorGroup:      d.Get("conductor_group").(string),
@@ -377,6 +405,7 @@ func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 		NetworkInterface:    d.Get("network_interface").(string),
 		Owner:               d.Get("owner").(string),
 		PowerInterface:      d.Get("power_interface").(string),
+		Properties:          properties,
 		RAIDInterface:       d.Get("raid_interface").(string),
 		RescueInterface:     d.Get("rescue_interface").(string),
 		ResourceClass:       d.Get("resource_class").(string),
