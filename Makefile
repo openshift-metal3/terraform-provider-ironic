@@ -3,6 +3,11 @@ TEST?=$$(go list ./... |grep -v 'vendor')
 PKG_NAME=ironic
 TERRAFORM_PLUGINS=$(HOME)/.terraform.d/plugins
 
+ifeq ("$(IRONIC_ENDPOINT)", "")
+	IRONIC_ENDPOINT := http://127.0.0.1:6385/
+	export IRONIC_ENDPOINT
+endif
+
 default: fmt lint build
 
 build:
@@ -23,6 +28,9 @@ lint: tools
 
 test:
 	go test -v ./ironic
+
+acceptance:
+	TF_ACC=true go test -v ./ironic/...
 
 clean:
 	rm -f terraform-provider-ironic
