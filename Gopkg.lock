@@ -170,11 +170,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d656806fd2dc53e936894226c141f45a5bfa7be220b1f05c1bd1dbec8965f5ab"
+  digest = "1:bbe9599db1c51a246c6d7cfe01c7fa14d70e9036db21781336104f8617770a7b"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
     "openstack/baremetal/noauth",
+    "openstack/baremetal/v1/allocations",
     "openstack/baremetal/v1/nodes",
     "openstack/baremetal/v1/ports",
     "pagination",
@@ -717,6 +718,7 @@
   input-imports = [
     "github.com/gophercloud/gophercloud",
     "github.com/gophercloud/gophercloud/openstack/baremetal/noauth",
+    "github.com/gophercloud/gophercloud/openstack/baremetal/v1/allocations",
     "github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes",
     "github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports",
     "github.com/gophercloud/utils/openstack/baremetal/v1/nodes",

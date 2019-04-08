@@ -4,16 +4,29 @@
 
 This is a terraform provider that lets you provision baremetal servers managed by Ironic.
 
-# Usage
+## Provider
 
-Example:
+Currently the provider only supports standalone noauth Ironic.  At a
+minimum, the Ironic endpoint URL must be specified. The user may also
+optionally specify an API microversion.
 
 ```terraform
 provider "ironic" {
-  "url" = "http://localhost:6385/v1"
-  "microversion" = "1.50"
+  url = "http://localhost:6385/v1"
+  microversion = "1.52"
 }
+```
 
+## Resources
+
+This provider currently implements a number of native Ironic resources,
+described below.
+
+### Nodes
+
+A node describes a hardware resource.
+
+```terraform
 resource "ironic_node_v1" "openshift-master-0" {
   name = "openshift-master-0"
   target_provision_state = "active"
@@ -47,6 +60,43 @@ resource "ironic_node_v1" "openshift-master-0" {
 			"deploy_kernel"=  "http://172.22.0.1/images/ironic-python-agent.kernel"
 			"deploy_ramdisk"= "http://172.22.0.1/images/ironic-python-agent.initramfs"
   }
+}
+```
+
+## Ports
+
+Ports may be specified as part of the node resource, or as a separate `ironic_port_v1`
+declaration.
+
+```terraform
+resource "ironic_port_v1" "openshift-master-0-port-0" {
+  node_uuid   = "${ironic_node_v1.openshift-master-0.id}"
+  pxe_enabled = true
+  address     = "00:bb:4a:d0:5e:38"
+}
+```
+
+## Allocation
+
+The Allocation resource represents a request to find and allocate a Node
+for deployment. The microversion must be 1.52 or later.
+
+```terraform
+resource "ironic_allocation_v1" "openshift-master-allocation" {
+  name = "master-${count.index}"
+  count = 3
+
+  resource_class = "baremetal"
+
+  candidates = [
+    "${ironic_node_v1.openshift-master-0.id}",
+    "${ironic_node_v1.openshift-master-1.id}",
+    "${ironic_node_v1.openshift-master-2.id}",
+  ]
+
+  traits = [
+    "CUSTOM_FOO",
+  ]
 }
 ```
 
