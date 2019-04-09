@@ -563,7 +563,8 @@ func (workflow *provisionStateWorkflow) toActive() (bool, error) {
 // Change a node to be "deleted," and remove the object from Ironic
 func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
 	switch state := workflow.d.Get("provision_state"); state {
-	case "available":
+	case "available",
+		"enroll":
 		// We're done deleting the node, we can now remove the object
 		err := nodes.Delete(workflow.client, workflow.d.Id()).ExtractErr()
 		return true, err
