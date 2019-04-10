@@ -1,0 +1,15 @@
+[[constraint]]
+  branch = "master"
+  name = "github.com/gophercloud/gophercloud"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/gophercloud/utils"
+
+[[constraint]]
+  name = "github.com/hashicorp/terraform"
+  version = "0.11.13"
+
+[prune]
+  go-tests = true
+  unused-packages = true
