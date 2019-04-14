@@ -510,7 +510,8 @@ func (workflow *provisionStateWorkflow) toAvailable() (done bool, err error) {
 	case "available":
 		// We're done!
 		return true, nil
-	case "cleaning":
+	case "cleaning",
+		"clean wait":
 		// Not done, no error - Ironic is working
 		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
 		return false, nil
