@@ -2,13 +2,14 @@ package ironic
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports"
 	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
-	"log"
-	"time"
 )
 
 // Schema resource definition for an Ironic node.
@@ -145,6 +146,23 @@ func resourceNodeV1() *schema.Resource {
 				// This did not change if the current provision state matches the target
 				DiffSuppressFunc: targetStateMatchesReality,
 			},
+			"power_state": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"target_power_state": {
+				Type:     schema.TypeString,
+				Optional: true,
+
+				// If power_state is same as target_power_state, we have no changes to apply
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					return new == d.Get("power_state").(string)
+				},
+			},
+			"power_state_timeout": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
 			// FIXME: Suppress config drive on updates
 			"user_data": {
 				Type:     schema.TypeString,
@@ -246,6 +264,14 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	// Change power state, if required
+	if targetPowerState := d.Get("target_power_state").(string); targetPowerState != "" {
+		err := changePowerState(client, d, nodes.TargetPowerState(targetPowerState))
+		if err != nil {
+			return fmt.Errorf("could not change power state: %s", err)
+		}
+	}
+
 	return resourceNodeV1Read(d, meta)
 }
 
@@ -293,6 +319,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("network_interface", node.NetworkInterface)
 	d.Set("owner", node.Owner)
 	d.Set("power_interface", node.PowerInterface)
+	d.Set("power_state", node.PowerState)
 	d.Set("root_device", node.Properties["root_device"])
 	delete(node.Properties, "root_device")
 	d.Set("properties", node.Properties)
@@ -345,6 +372,13 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 			if _, err := nodes.Update(client, d.Id(), opts).Extract(); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Update power state if required
+	if targetPowerState := d.Get("target_power_state").(string); d.HasChange("target_power_state") && targetPowerState != "" {
+		if err := changePowerState(client, d, nodes.TargetPowerState(targetPowerState)); err != nil {
+			return err
 		}
 	}
 
@@ -628,4 +662,44 @@ func (workflow *provisionStateWorkflow) changeProvisionState(target nodes.Target
 	}
 
 	return false, nodes.ChangeProvisionState(workflow.client, workflow.d.Id(), *opts).ExtractErr()
+}
+
+// Call Ironic's API and change the power state of the node
+func changePowerState(client *gophercloud.ServiceClient, d *schema.ResourceData, target nodes.TargetPowerState) error {
+	opts := nodes.PowerStateOpts{
+		Target: target,
+	}
+
+	timeout := d.Get("power_state_timeout").(int)
+	if timeout != 0 {
+		opts.Timeout = timeout
+	} else {
+		timeout = 300 // used below for how long to wait for Ironic to finish
+	}
+
+	if err := nodes.ChangePowerState(client, d.Id(), opts).ExtractErr(); err != nil {
+		return err
+	}
+
+	// Wait for target_power_state to be empty, i.e. Ironic thinks it's finished
+	checkInterval := 5
+
+	for {
+		node, err := nodes.Get(client, d.Id()).Extract()
+		if err != nil {
+			return err
+		}
+
+		if node.TargetPowerState == "" {
+			break
+		}
+
+		time.Sleep(time.Duration(checkInterval) * time.Second)
+		timeout -= checkInterval
+		if timeout <= 0 {
+			return fmt.Errorf("timed out waiting for power state change")
+		}
+	}
+
+	return nil
 }
