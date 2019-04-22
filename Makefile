@@ -11,7 +11,7 @@ endif
 default: fmt lint build
 
 build:
-	go build -ldflags "${LDFLAGS}"
+	go build -ldflags "${LDFLAGS}" -tags "${TAGS}"
 
 install: default
 	mkdir -p ${TERRAFORM_PLUGINS}
@@ -27,10 +27,10 @@ lint: tools
 	go run golang.org/x/lint/golint -set_exit_status ./ironic .
 
 test:
-	go test -v ./ironic
+	go test -tags "${TAGS}" -v ./ironic
 
 acceptance:
-	TF_ACC=true go test -v ./ironic/...
+	TF_ACC=true go test -tags "acceptance" -v ./ironic/...
 
 clean:
 	rm -f terraform-provider-ironic

@@ -1,6 +1,8 @@
 package testhelper
 
 import (
+	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 )
@@ -15,4 +17,13 @@ func AssertError(t *testing.T, err error, expected string) {
 	if err == nil || !strings.Contains(err.Error(), expected) {
 		t.Fatalf("expected error to contain '%s', but was '%s'", expected, err)
 	}
+}
+
+func RandomString(prefix string, length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = byte(rand.Intn(26) + 97)
+	}
+
+	return fmt.Sprintf("%s%s", prefix, string(b))
 }

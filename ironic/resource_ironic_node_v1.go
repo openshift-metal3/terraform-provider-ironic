@@ -81,6 +81,10 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 				Default:  "inspector",
 			},
+			"instance_uuid": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"instance_info": {
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -314,6 +318,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("driver_info", node.DriverInfo)
 	d.Set("extra", node.Extra)
 	d.Set("inspect_interface", node.InspectInterface)
+	d.Set("instance_uuid", node.InstanceUUID)
 	d.Set("management_interface", node.ManagementInterface)
 	d.Set("name", node.Name)
 	d.Set("network_interface", node.NetworkInterface)

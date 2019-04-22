@@ -20,13 +20,14 @@ func Provider() terraform.ResourceProvider {
 			"microversion": {
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("IRONIC_MICROVERSION", "1.50"),
+				DefaultFunc: schema.EnvDefaultFunc("IRONIC_MICROVERSION", "1.52"),
 				Description: descriptions["microversion"],
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"ironic_node_v1": resourceNodeV1(),
-			"ironic_port_v1": resourcePortV1(),
+			"ironic_node_v1":       resourceNodeV1(),
+			"ironic_port_v1":       resourcePortV1(),
+			"ironic_allocation_v1": resourceAllocationV1(),
 		},
 		ConfigureFunc: configureProvider,
 	}

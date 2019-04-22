@@ -2,7 +2,7 @@ dist:     xenial
 sudo:     false
 language: go
 env:
-  - TF_ACC=true
+  - TF_ACC=true TAGS="acceptance"
 go:
   - 1.11.x
 git:

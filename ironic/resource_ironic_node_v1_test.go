@@ -11,6 +11,8 @@ import (
 )
 
 func TestAccIronicNode(t *testing.T) {
+	var node nodes.Node
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -21,7 +23,7 @@ func TestAccIronicNode(t *testing.T) {
 			{
 				Config: testAccNodeResource(""),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckNodeExists("ironic_node_v1.node-0"),
+					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
 						"provision_state", "enroll",
 					),
@@ -32,7 +34,7 @@ func TestAccIronicNode(t *testing.T) {
 			{
 				Config: testAccNodeResource("target_provision_state = \"provide\""),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckNodeExists("ironic_node_v1.node-0"),
+					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
 						"provision_state", "available"),
 				),
@@ -45,7 +47,7 @@ func TestAccIronicNode(t *testing.T) {
 					power_state_timeout = 10
 				`),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckNodeExists("ironic_node_v1.node-0"),
+					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
 						"power_state", "power on"),
 				),
@@ -55,7 +57,7 @@ func TestAccIronicNode(t *testing.T) {
 			{
 				Config: testAccNodeResource("target_power_state = \"power off\""),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckNodeExists("ironic_node_v1.node-0"),
+					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
 						"power_state", "power off"),
 				),
@@ -70,7 +72,7 @@ func TestAccIronicNode(t *testing.T) {
 			{
 				Config: testAccNodeResource("target_power_state = \"rebooting\""),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckNodeExists("ironic_node_v1.node-0"),
+					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
 						"power_state", "power on"),
 				),
@@ -79,7 +81,7 @@ func TestAccIronicNode(t *testing.T) {
 	})
 }
 
-func testAccCheckNodeExists(name string) resource.TestCheckFunc {
+func CheckNodeExists(name string, node *nodes.Node) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
 		client := testAccProvider.Meta().(*gophercloud.ServiceClient)
 
@@ -92,10 +94,12 @@ func testAccCheckNodeExists(name string) resource.TestCheckFunc {
 			return fmt.Errorf("no node ID is set")
 		}
 
-		_, err := nodes.Get(client, rs.Primary.ID).Extract()
+		result, err := nodes.Get(client, rs.Primary.ID).Extract()
 		if err != nil {
 			return fmt.Errorf("node (%s) not found: %s", rs.Primary.ID, err)
 		}
+
+		*node = *result
 
 		return nil
 	}
