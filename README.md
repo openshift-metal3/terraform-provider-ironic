@@ -115,7 +115,7 @@ Users may specify a `node_uuid` directly, or make use of the allocation
 resource to dynamically pick a node.
 
 
-```
+```terraform
 resource "ironic_deployment" "masters"  {
   count = 3
   node_uuid = "${ironic_allocation_v1.openshift-master-allocation[$count.index].node_uuid}"
@@ -130,7 +130,6 @@ resource "ironic_deployment" "masters"  {
   network_data = "${var.network_data}"
   metadata = "${var.metadata}"
 }
-
 ```
 
 # License
