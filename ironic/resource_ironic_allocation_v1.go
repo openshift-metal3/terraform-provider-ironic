@@ -128,9 +128,15 @@ func resourceAllocationV1Read(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-// Delete an allocation from Ironic
+// Delete an allocation from Ironic if it exists
 func resourceAllocationV1Delete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
+
+	_, err := allocations.Get(client, d.Id()).Extract()
+	if _, ok := err.(gophercloud.ErrDefault404); ok {
+		return nil
+	}
+
 	return allocations.Delete(client, d.Id()).ExtractErr()
 }
 

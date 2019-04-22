@@ -30,13 +30,33 @@ func TestAccIronicNode(t *testing.T) {
 				),
 			},
 
-			// Change the node's provision state to 'available'
+			// Ensure node is manageable
 			{
-				Config: testAccNodeResource("target_provision_state = \"provide\""),
+				Config: testAccNodeResource("manage = true"),
 				Check: resource.ComposeTestCheckFunc(
 					CheckNodeExists("ironic_node_v1.node-0", &node),
 					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
-						"provision_state", "available"),
+						"provision_state", "manageable"),
+				),
+			},
+
+			// Inspect the node
+			{
+				Config: testAccNodeResource("inspect = true"),
+				Check: resource.ComposeTestCheckFunc(
+					CheckNodeExists("ironic_node_v1.node-0", &node),
+					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
+						"provision_state", "manageable"),
+				),
+			},
+
+			// Clean the node
+			{
+				Config: testAccNodeResource("clean = true"),
+				Check: resource.ComposeTestCheckFunc(
+					CheckNodeExists("ironic_node_v1.node-0", &node),
+					resource.TestCheckResourceAttr("ironic_node_v1.node-0",
+						"provision_state", "manageable"),
 				),
 			},
 
@@ -129,6 +149,7 @@ func testAccNodeResource(extraValue string) string {
 
 			boot_interface = "pxe"
 			deploy_interface = "fake"
+			inspect_interface = "fake"
 			management_interface = "fake"
 			power_interface = "fake"
 			resource_class = "baremetal"

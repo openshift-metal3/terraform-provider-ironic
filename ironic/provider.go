@@ -28,6 +28,7 @@ func Provider() terraform.ResourceProvider {
 			"ironic_node_v1":       resourceNodeV1(),
 			"ironic_port_v1":       resourcePortV1(),
 			"ironic_allocation_v1": resourceAllocationV1(),
+			"ironic_deployment":    resourceDeployment(),
 		},
 		ConfigureFunc: configureProvider,
 	}
