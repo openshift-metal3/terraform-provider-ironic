@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-	th "github.com/openshift-metalkube/terraform-provider-ironic/testhelper"
+	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
 // Creates a node, and an allocation that should use it
@@ -22,8 +22,8 @@ func TestAccIronicDeployment(t *testing.T) {
 	resourceClass := th.RandomString("baremetal-", 8)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
 		CheckDestroy: testAccDeploymentDestroy,
 		Steps: []resource.TestStep{
 			// Create a test deployment
