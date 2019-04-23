@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/hashicorp/terraform/plugin"
 	"github.com/hashicorp/terraform/terraform"
-	"github.com/openshift-metalkube/terraform-provider-ironic/ironic"
+	"github.com/openshift-metal3/terraform-provider-ironic/ironic"
 )
 
 func main() {

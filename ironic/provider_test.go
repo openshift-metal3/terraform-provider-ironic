@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	th "github.com/openshift-metalkube/terraform-provider-ironic/testhelper"
+	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
 var testAccProviders map[string]terraform.ResourceProvider
