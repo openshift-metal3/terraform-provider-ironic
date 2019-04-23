@@ -7,13 +7,13 @@ go:
   - 1.11.x
 git:
   depth: 1
-  go_import_path: github.com/openshift-metalkube/terraform-provider-ironic
+  go_import_path: github.com/openshift-metal3/terraform-provider-ironic
 install:        true
 services:
   - docker
 before_script:
-  - docker run -d --net host --privileged --name mariadb --entrypoint /bin/runmariadb quay.io/metalkube/metalkube-ironic
-  - docker run -d --net host --privileged -e "IP=0.0.0.0" --name ironic quay.io/metalkube/metalkube-ironic
+  - docker run -d --net host --privileged --name mariadb --entrypoint /bin/runmariadb quay.io/metal3-io/ironic
+  - docker run -d --net host --privileged -e "IP=0.0.0.0" --name ironic quay.io/metal3-io/ironic
   - docker run --net host -e TARGETS=127.0.0.1:3306,127.0.0.1:6385 -e TIMEOUT=60 waisbrot/wait
 script:
   - make fmt
