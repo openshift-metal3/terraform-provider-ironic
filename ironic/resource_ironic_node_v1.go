@@ -8,7 +8,6 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports"
-	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -29,6 +28,10 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "ipxe",
+			},
+			"clean": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"conductor_group": {
 				Type:     schema.TypeString,
@@ -89,6 +92,18 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeMap,
 				Optional: true,
 			},
+			"inspect": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"available": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"manage": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"management_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -143,13 +158,6 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"target_provision_state": {
-				Type:     schema.TypeString,
-				Optional: true,
-
-				// This did not change if the current provision state matches the target
-				DiffSuppressFunc: targetStateMatchesReality,
-			},
 			"power_state": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -167,37 +175,8 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			// FIXME: Suppress config drive on updates
-			"user_data": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"network_data": {
-				Type:     schema.TypeMap,
-				Optional: true,
-			},
-			"metadata": {
-				Type:     schema.TypeMap,
-				Optional: true,
-			},
 		},
 	}
-}
-
-// Match up Ironic verbs and nouns for target_provision_state
-func targetStateMatchesReality(_, old, new string, d *schema.ResourceData) bool {
-	log.Printf("[DEBUG] Current state is '%s', target is '%s'\n", d.Get("provision_state").(string), new)
-
-	switch new {
-	case "manage":
-		return d.Get("provision_state").(string) == "manageable"
-	case "provide":
-		return d.Get("provision_state").(string) == "available"
-	case "active":
-		return d.Get("provision_state").(string) == "active"
-	}
-
-	return false
 }
 
 // Create a node, including driving Ironic's state machine
@@ -227,9 +206,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// FIXME - This is ugly, but terraform doesn't handle nested resources well :-( We need the port created
-	// in the middle of the process, after we create the node but before we start deploying it.  Maybe
-	// there's a better solution.
+	// Create ports as part of the node object - you may also use the native port resource
 	portSet := d.Get("ports").(*schema.Set)
 	if portSet != nil {
 		portList := portSet.List()
@@ -246,7 +223,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 				}
 
 			}
-			// FIXME all values other than address and pxe
+			// FIXME: All values other than address and pxe
 			portCreateOpts := ports.CreateOpts{
 				NodeUUID:   d.Id(),
 				Address:    port["address"].(string),
@@ -260,11 +237,31 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// target_provision_state is special, we need to drive ironic through it's state machine
-	// to reach the desired state, which could take multiple long-running steps.
-	if target := d.Get("target_provision_state").(string); target != "" {
-		if err := changeProvisionStateToTarget(d, client); err != nil {
-			return err
+	// Make node manageable
+	if d.Get("manage").(bool) || d.Get("clean").(bool) || d.Get("inspect").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil); err != nil {
+			return fmt.Errorf("could not manage: %s", err)
+		}
+	}
+
+	// Clean node
+	if d.Get("clean").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", nil); err != nil {
+			return fmt.Errorf("could not clean: %s", err)
+		}
+	}
+
+	// Inspect node
+	if d.Get("inspect").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil); err != nil {
+			return fmt.Errorf("could not inspect: %s", err)
+		}
+	}
+
+	// Make node available
+	if d.Get("available").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil); err != nil {
+			return fmt.Errorf("could not make node available: %s", err)
 		}
 	}
 
@@ -334,7 +331,6 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("storage_interface", node.StorageInterface)
 	d.Set("vendor_interface", node.VendorInterface)
 	d.Set("provision_state", node.ProvisionState)
-	d.Set("target_provision_state", node.TargetProvisionState)
 
 	return nil
 }
@@ -380,6 +376,15 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	// Make node manageable
+	if (d.HasChange("manage") && d.Get("manage").(bool)) ||
+		(d.HasChange("clean") && d.Get("clean").(bool)) ||
+		(d.HasChange("inspect") && d.Get("inspect").(bool)) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil); err != nil {
+			return fmt.Errorf("could not manage: %s", err)
+		}
+	}
+
 	// Update power state if required
 	if targetPowerState := d.Get("target_power_state").(string); d.HasChange("target_power_state") && targetPowerState != "" {
 		if err := changePowerState(client, d, nodes.TargetPowerState(targetPowerState)); err != nil {
@@ -387,10 +392,24 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// Update provision state if required - this could take a while
-	if d.HasChange("target_provision_state") {
-		if err := changeProvisionStateToTarget(d, client); err != nil {
-			return err
+	// Clean node
+	if d.HasChange("clean") && d.Get("clean").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", nil); err != nil {
+			return fmt.Errorf("could not clean: %s", err)
+		}
+	}
+
+	// Inspect node
+	if d.HasChange("inspect") && d.Get("inspect").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil); err != nil {
+			return fmt.Errorf("could not inspect: %s", err)
+		}
+	}
+
+	// Make node available
+	if d.HasChange("available") && d.Get("available").(bool) {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil); err != nil {
+			return fmt.Errorf("could not make node available: %s", err)
 		}
 	}
 
@@ -416,8 +435,11 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 // Delete a node from Ironic
 func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gophercloud.ServiceClient)
-	d.Set("target_provision_state", "deleted")
-	return changeProvisionStateToTarget(d, client)
+	if err := ChangeProvisionStateToTarget(client, d.Id(), "deleted", nil); err != nil {
+		return err
+	}
+
+	return nodes.Delete(client, d.Id()).ExtractErr()
 }
 
 func propertiesMerge(d *schema.ResourceData, key string) map[string]interface{} {
@@ -451,222 +473,6 @@ func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 		StorageInterface:    d.Get("storage_interface").(string),
 		VendorInterface:     d.Get("vendor_interface").(string),
 	}
-}
-
-// provisionStateWorkflow is used to track state through the process of updating's it's provision state
-type provisionStateWorkflow struct {
-	client *gophercloud.ServiceClient
-	d      *schema.ResourceData
-	target string
-	wait   time.Duration
-}
-
-// Drive Ironic's state machine through the process to reach our desired end state. This requires multiple
-// possibly long-running steps.  If required, we'll build a config drive ISO for deployment.
-// TODO: Handle clean steps and rescue password
-func changeProvisionStateToTarget(d *schema.ResourceData, client *gophercloud.ServiceClient) error {
-	defer resourceNodeV1Read(d, client) // Always refresh resource state before returning
-
-	target := d.Get("target_provision_state").(string)
-
-	// Run the provisionStateWorkflow - this could take a while
-	wf := provisionStateWorkflow{
-		target: target,
-		client: client,
-		wait:   5 * time.Second, // FIXME - Make configurable
-		d:      d,
-	}
-
-	err := wf.run()
-	return err
-}
-
-// Keep driving the state machine forward
-func (workflow *provisionStateWorkflow) run() error {
-	log.Printf("[INFO] Beginning provisioning workflow, will try to change node to state '%s'", workflow.target)
-
-	for {
-		done, err := workflow.next()
-		if done || err != nil {
-			return err
-		}
-
-		time.Sleep(workflow.wait)
-	}
-
-	return nil
-}
-
-func (workflow *provisionStateWorkflow) next() (done bool, err error) {
-	// Refresh the node on each run
-	if err := resourceNodeV1Read(workflow.d, workflow.client); err != nil {
-		return true, err
-	}
-
-	log.Printf("[DEBUG] Node current state is '%s'", workflow.d.Get("provision_state").(string))
-
-	switch target := nodes.TargetProvisionState(workflow.target); target {
-	case nodes.TargetManage:
-		return workflow.toManageable()
-	case nodes.TargetProvide:
-		return workflow.toAvailable()
-	case nodes.TargetActive:
-		return workflow.toActive()
-	case nodes.TargetDeleted:
-		return workflow.toDeleted()
-	default:
-		return true, fmt.Errorf("unknown target state '%s'", target)
-	}
-}
-
-// Change a node to "manageable" stable
-func (workflow *provisionStateWorkflow) toManageable() (done bool, err error) {
-	switch state := workflow.d.Get("provision_state").(string); state {
-	case "manageable":
-		// We're done!
-		return true, err
-	case "enroll",
-		"adopt failed",
-		"clean failed",
-		"inspect failed",
-		"available":
-		return workflow.changeProvisionState(nodes.TargetManage)
-	case "verifying":
-		// Not done, no error - Ironic is working
-		return false, nil
-
-	default:
-		// TODO: If node is not in a position to go back to manageable, should we delete it (ForceNew) and create it again?
-		return true, fmt.Errorf("cannot go from state '%s' to state 'manageable'", state)
-	}
-
-	return false, nil
-}
-
-// Change a node to "available" state
-func (workflow *provisionStateWorkflow) toAvailable() (done bool, err error) {
-	switch state := workflow.d.Get("provision_state").(string); state {
-	case "available":
-		// We're done!
-		return true, nil
-	case "cleaning",
-		"clean wait":
-		// Not done, no error - Ironic is working
-		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
-		return false, nil
-	case "manageable":
-		// From manageable, we can go to provide
-		log.Printf("[DEBUG] Node %s is '%s', going to change to 'available'", workflow.d.Id(), state)
-		return workflow.changeProvisionState(nodes.TargetProvide)
-	default:
-		// Otherwise we have to get into manageable state first
-		log.Printf("[DEBUG] Node %s is '%s', going to change to 'manageable'.", workflow.d.Id(), state)
-		_, err := workflow.toManageable()
-		if err != nil {
-			return true, err
-		}
-		return false, nil
-	}
-
-	return false, nil
-}
-
-// Change a node to "active" state
-func (workflow *provisionStateWorkflow) toActive() (bool, error) {
-
-	switch state := workflow.d.Get("provision_state"); state {
-	case "active":
-		// We're done!
-		log.Printf("[DEBUG] Node %s is 'active', we are done.", workflow.d.Id())
-		return true, nil
-	case "deploying",
-		"wait call-back":
-		// Not done, no error - Ironic is working
-		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
-		return false, nil
-	case "available":
-		// From available, we can go to active
-		log.Printf("[DEBUG] Node %s is 'available', going to change to 'active'.", workflow.d.Id())
-		workflow.wait = 30 * time.Second // Deployment takes a while
-		return workflow.changeProvisionState(nodes.TargetActive)
-	default:
-		// Otherwise we have to get into available state first
-		log.Printf("[DEBUG] Node %s is '%s', going to change to 'available'.", workflow.d.Id(), state)
-		_, err := workflow.toAvailable()
-		if err != nil {
-			return true, err
-		}
-		return false, nil
-	}
-}
-
-// Change a node to be "deleted," and remove the object from Ironic
-func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
-	switch state := workflow.d.Get("provision_state"); state {
-	case "available",
-		"enroll":
-		// We're done deleting the node, we can now remove the object
-		err := nodes.Delete(workflow.client, workflow.d.Id()).ExtractErr()
-		return true, err
-	case "cleaning",
-		"deleting":
-		// Not done, no error - Ironic is working
-		log.Printf("[DEBUG] Node %s is '%s', waiting for Ironic to finish.", workflow.d.Id(), state)
-		return false, nil
-	case "active",
-		"wait call-back",
-		"deploy failed",
-		"error":
-		log.Printf("[DEBUG] Node %s is '%s', going to change to 'deleted'.", workflow.d.Id(), state)
-		return workflow.changeProvisionState(nodes.TargetDeleted)
-	default:
-		return true, fmt.Errorf("cannot delete node in state '%s'", state)
-	}
-
-	return false, nil
-}
-
-// Builds the ProvisionStateOpts to send to Ironic -- including config drive.
-func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.TargetProvisionState) (*nodes.ProvisionStateOpts, error) {
-	opts := nodes.ProvisionStateOpts{
-		Target: target,
-	}
-
-	// If we're deploying, then build a config drive to send to Ironic
-	if target == "active" {
-		configDrive := utils.ConfigDrive{}
-
-		if userData := utils.UserDataString(workflow.d.Get("user_data").(string)); userData != "" {
-			configDrive.UserData = userData
-		}
-
-		if metaData := workflow.d.Get("meta_data"); metaData != nil {
-			configDrive.MetaData = metaData.(map[string]interface{})
-		}
-
-		if networkData := workflow.d.Get("network_data"); networkData != nil {
-			configDrive.NetworkData = networkData.(map[string]interface{})
-		}
-
-		configDriveData, err := configDrive.ToConfigDrive()
-		if err != nil {
-			return nil, err
-		}
-		opts.ConfigDrive = configDriveData
-	}
-
-	return &opts, nil
-}
-
-// Call Ironic's API and issue the change provision state request.
-func (workflow *provisionStateWorkflow) changeProvisionState(target nodes.TargetProvisionState) (done bool, err error) {
-	opts, err := workflow.buildProvisionStateOpts(target)
-	if err != nil {
-		log.Printf("[ERROR] Unable to construct provisioning state options: %s", err.Error())
-		return true, err
-	}
-
-	return false, nodes.ChangeProvisionState(workflow.client, workflow.d.Id(), *opts).ExtractErr()
 }
 
 // Call Ironic's API and change the power state of the node

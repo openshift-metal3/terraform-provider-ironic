@@ -24,13 +24,20 @@ described below.
 
 ### Nodes
 
-A node describes a hardware resource.
+A node describes a hardware resource.  A limited subset of provision
+states are supported, you may specify `manage = true` or `available =
+true`.  You may also instruct Ironic to inspect (`inspect = true`) or
+clean (`clean = true`) the node.  To bring a node to the `active` state,
+i.e. deploy the node - use a deployment resource instead.
+
 
 ```terraform
 resource "ironic_node_v1" "openshift-master-0" {
   name = "openshift-master-0"
-  target_provision_state = "active"
-  user_data = "${file("master.ign")}"
+
+  inspect = true      # Perform inspection
+  clean = true        # Clean the node
+  available = true    # Make the node 'available'
 
   ports = [
     {
@@ -42,13 +49,6 @@ resource "ironic_node_v1" "openshift-master-0" {
   properties {
     "local_gb" = "50"
     "cpu_arch" =  "x86_64"
-  }
-
-  instance_info = {
-    "image_source" = "http://172.22.0.1/images/redhat-coreos-maipo-latest.qcow2"
-    "image_checksum" = "26c53f3beca4e0b02e09d335257826fd"
-    "root_gb" = "25"
-    "root_device" = "/dev/vda"
   }
 
   driver = "ipmi"
@@ -97,6 +97,38 @@ resource "ironic_allocation_v1" "openshift-master-allocation" {
   traits = [
     "CUSTOM_FOO",
   ]
+}
+```
+
+## Deployment
+
+A deployment will provision a baremetal node, using the information
+given in the resource.  The `count` metaparameter can be used to deploy
+multiple nodes. Terraform will drive the [Ironic state
+machine](https://docs.openstack.org/ironic/latest/contributor/states.html)
+to bring the node to an `active` state.  The separation of deployment
+from the baremetal node defintion allows a user to manage their hardware
+outside of the provider if desired. Destruction of a deployment brings
+the baremetal node back to the `available` state.
+
+Users may specify a `node_uuid` directly, or make use of the allocation
+resource to dynamically pick a node.
+
+
+```terraform
+resource "ironic_deployment" "masters"  {
+  count = 3
+  node_uuid = "${ironic_allocation_v1.openshift-master-allocation[$count.index].node_uuid}"
+
+  instance_info {
+    user_data      = "${file("master.ign")}"
+    image_source   = "http://172.22.0.1/images/redhat-coreos-maipo-latest.qcow2"
+    image_checksum = "26c53f3beca4e0b02e09d335257826fd"
+  }
+
+  user_data = "${var.user_data}"
+  network_data = "${var.network_data}"
+  metadata = "${var.metadata}"
 }
 ```
 

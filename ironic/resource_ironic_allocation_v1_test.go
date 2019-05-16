@@ -101,7 +101,7 @@ func testAccAllocationResource(node, resourceClass, allocation string) string {
 		resource "ironic_node_v1" "%s" {
 			name = "%s"
 			driver = "fake-hardware"
-			target_provision_state = "provide"
+			available = true
 			target_power_state = "power off"
 
 			boot_interface = "fake"
