@@ -82,7 +82,8 @@ func testAccDeploymentResource(node, resourceClass, allocation string) string {
 		resource "ironic_deployment" "%s" {
 			name = "%s"
 			node_uuid = "${ironic_allocation_v1.%s.node_uuid}"
-			instance_info {
+
+			instance_info = {
 				image_source   = "http://172.22.0.1/images/redhat-coreos-maipo-latest.qcow2"
 				image_checksum = "26c53f3beca4e0b02e09d335257826fd"
 				root_gb = "25"

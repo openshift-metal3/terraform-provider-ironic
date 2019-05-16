@@ -88,10 +88,6 @@ func resourceNodeV1() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"instance_info": {
-				Type:     schema.TypeMap,
-				Optional: true,
-			},
 			"inspect": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -195,17 +191,6 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Node created with ID %s\n", d.Id())
 	d.SetId(result.UUID)
 
-	// Some fields can only be set in an update after create
-	updateOpts := postCreateUpdateOpts(d)
-	if len(updateOpts) > 0 {
-		log.Printf("[DEBUG] Node updates required, issuing updates: %+v\n", updateOpts)
-		_, err = nodes.Update(client, d.Id(), updateOpts).Extract()
-		if err != nil {
-			resourceNodeV1Read(d, meta)
-			return err
-		}
-	}
-
 	// Create ports as part of the node object - you may also use the native port resource
 	portSet := d.Get("ports").(*schema.Set)
 	if portSet != nil {
@@ -274,25 +259,6 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	return resourceNodeV1Read(d, meta)
-}
-
-// All the options that need to be updated on the node, post-create.  Not everything
-// can be created through the POST to /v1/nodes.  TODO: The rest of the fields other
-// than instance_info.
-func postCreateUpdateOpts(d *schema.ResourceData) nodes.UpdateOpts {
-	opts := nodes.UpdateOpts{}
-
-	instanceInfo := d.Get("instance_info").(map[string]interface{})
-	if instanceInfo != nil {
-		opts = append(opts, nodes.UpdateOperation{
-			Op:    nodes.AddOp,
-			Path:  "/instance_info",
-			Value: instanceInfo,
-		},
-		)
-	}
-
-	return opts
 }
 
 // Read the node's data from Ironic
