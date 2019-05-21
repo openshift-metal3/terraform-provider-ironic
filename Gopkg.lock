@@ -169,8 +169,7 @@
   version = "v2.0.4"
 
 [[projects]]
-  branch = "master"
-  digest = "1:bbe9599db1c51a246c6d7cfe01c7fa14d70e9036db21781336104f8617770a7b"
+  digest = "1:e52de3e3115bc138c4e32d93d794b588d94c5306ce708f0f8e5c635e07504a09"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -181,7 +180,7 @@
     "pagination",
   ]
   pruneopts = "UT"
-  revision = "2c55d17f707cc8333ca4f49690cb2970d12a25f6"
+  revision = "7892efa714f10951c5483a28c7471d8051b12975"
 
 [[projects]]
   branch = "master"

@@ -14,7 +14,7 @@ type provisionStateWorkflow struct {
 	client *gophercloud.ServiceClient
 	node   nodes.Node
 	uuid   string
-	target string
+	target nodes.TargetProvisionState
 	wait   time.Duration
 
 	configDrive *utils.ConfigDrive
@@ -22,7 +22,7 @@ type provisionStateWorkflow struct {
 
 // ChangeProvisionStateToTarget drives Ironic's state machine through the process to reach our desired end state. This requires multiple
 // possibly long-running steps.  If required, we'll build a config drive ISO for deployment.
-func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid, target string, configDrive *utils.ConfigDrive) error {
+func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string, target nodes.TargetProvisionState, configDrive *utils.ConfigDrive) error {
 
 	// Run the provisionStateWorkflow - this could take a while
 	wf := provisionStateWorkflow{
@@ -107,7 +107,7 @@ func (workflow *provisionStateWorkflow) toManageable() (done bool, err error) {
 func (workflow *provisionStateWorkflow) toClean() (done bool, err error) {
 	// Node must be manageable first
 	workflow.reloadNode()
-	if workflow.node.ProvisionState != nodes.Manageable {
+	if workflow.node.ProvisionState != string(nodes.Manageable) {
 		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil); err != nil {
 			return true, err
 		}
@@ -139,7 +139,7 @@ func (workflow *provisionStateWorkflow) toClean() (done bool, err error) {
 func (workflow *provisionStateWorkflow) toInspect() (done bool, err error) {
 	// Node must be manageable first
 	workflow.reloadNode()
-	if workflow.node.ProvisionState != nodes.Manageable {
+	if workflow.node.ProvisionState != string(nodes.Manageable) {
 		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil); err != nil {
 			return true, err
 		}
