@@ -12,7 +12,7 @@ optionally specify an API microversion.
 
 ```terraform
 provider "ironic" {
-  url = "http://localhost:6385/v1"
+  url          = "http://localhost:6385/v1"
   microversion = "1.52"
 }
 ```
@@ -35,30 +35,30 @@ i.e. deploy the node - use a deployment resource instead.
 resource "ironic_node_v1" "openshift-master-0" {
   name = "openshift-master-0"
 
-  inspect = true      # Perform inspection
-  clean = true        # Clean the node
-  available = true    # Make the node 'available'
+  inspect   = true # Perform inspection
+  clean     = true # Clean the node
+  available = true # Make the node 'available'
 
   ports = [
     {
-      "address" = "00:bb:4a:d0:5e:38"
+      "address"     = "00:bb:4a:d0:5e:38"
       "pxe_enabled" = "true"
-    }
+    },
   ]
 
-  properties {
+  properties = {
     "local_gb" = "50"
-    "cpu_arch" =  "x86_64"
+    "cpu_arch" = "x86_64"
   }
 
   driver = "ipmi"
-  driver_info {
-			"ipmi_port"=      "6230"
-			"ipmi_username"=  "admin"
-			"ipmi_password"=  "password"
-			"ipmi_address"=   "192.168.111.1"
-			"deploy_kernel"=  "http://172.22.0.1/images/ironic-python-agent.kernel"
-			"deploy_ramdisk"= "http://172.22.0.1/images/ironic-python-agent.initramfs"
+  driver_info = {
+    "ipmi_port"      = "6230"
+    "ipmi_username"  = "admin"
+    "ipmi_password"  = "password"
+    "ipmi_address"   = "192.168.111.1"
+    "deploy_kernel"  = "http://172.22.0.1/images/ironic-python-agent.kernel"
+    "deploy_ramdisk" = "http://172.22.0.1/images/ironic-python-agent.initramfs"
   }
 }
 ```
@@ -70,7 +70,7 @@ declaration.
 
 ```terraform
 resource "ironic_port_v1" "openshift-master-0-port-0" {
-  node_uuid   = "${ironic_node_v1.openshift-master-0.id}"
+  node_uuid   = ironic_node_v1.openshift-master-0.id
   pxe_enabled = true
   address     = "00:bb:4a:d0:5e:38"
 }
@@ -83,15 +83,15 @@ for deployment. The microversion must be 1.52 or later.
 
 ```terraform
 resource "ironic_allocation_v1" "openshift-master-allocation" {
-  name = "master-${count.index}"
+  name  = "master-${count.index}"
   count = 3
 
   resource_class = "baremetal"
 
-  candidates = [
-    "${ironic_node_v1.openshift-master-0.id}",
-    "${ironic_node_v1.openshift-master-1.id}",
-    "${ironic_node_v1.openshift-master-2.id}",
+  candidate_nodes = [
+    ironic_node_v1.openshift-master-0.id,
+    ironic_node_v1.openshift-master-1.id,
+    ironic_node_v1.openshift-master-2.id,
   ]
 
   traits = [
@@ -116,19 +116,18 @@ resource to dynamically pick a node.
 
 
 ```terraform
-resource "ironic_deployment" "masters"  {
-  count = 3
-  node_uuid = "${ironic_allocation_v1.openshift-master-allocation[$count.index].node_uuid}"
+resource "ironic_deployment" "masters" {
+  count     = 3
+  node_uuid = "${element(ironic_allocation_v1.openshift-master-allocation.*.node_uuid, count.index)}"
 
-  instance_info {
-    user_data      = "${file("master.ign")}"
+  instance_info = {
     image_source   = "http://172.22.0.1/images/redhat-coreos-maipo-latest.qcow2"
     image_checksum = "26c53f3beca4e0b02e09d335257826fd"
   }
 
-  user_data = "${var.user_data}"
-  network_data = "${var.network_data}"
-  metadata = "${var.metadata}"
+  user_data    = var.user_data
+  network_data = var.network_data
+  metadata     = var.metadata
 }
 ```
 
