@@ -35,6 +35,7 @@ func resourceAllocationV1() *schema.Resource {
 				},
 				Optional: true,
 				ForceNew: true,
+				Computed: true,
 			},
 			"traits": {
 				Type: schema.TypeList,
