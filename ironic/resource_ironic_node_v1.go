@@ -27,7 +27,7 @@ func resourceNodeV1() *schema.Resource {
 			"boot_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "ipxe",
+				Computed: true,
 			},
 			"clean": {
 				Type:     schema.TypeBool,
@@ -36,16 +36,17 @@ func resourceNodeV1() *schema.Resource {
 			"conductor_group": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"console_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "no-console",
+				Computed: true,
 			},
 			"deploy_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "direct",
+				Computed: true,
 			},
 			"driver": {
 				Type:     schema.TypeString,
@@ -82,7 +83,7 @@ func resourceNodeV1() *schema.Resource {
 			"inspect_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "inspector",
+				Computed: true,
 			},
 			"instance_uuid": {
 				Type:     schema.TypeString,
@@ -103,27 +104,27 @@ func resourceNodeV1() *schema.Resource {
 			"management_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "ipmitool",
+				Computed: true,
 			},
 			"network_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "noop",
+				Computed: true,
 			},
 			"power_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "ipmitool",
+				Computed: true,
 			},
 			"raid_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "no-raid",
+				Computed: true,
 			},
 			"rescue_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "no-rescue",
+				Computed: true,
 			},
 			"resource_class": {
 				Type:     schema.TypeString,
@@ -132,16 +133,17 @@ func resourceNodeV1() *schema.Resource {
 			"storage_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "noop",
+				Computed: true,
 			},
 			"vendor_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "ipmitool",
+				Computed: true,
 			},
 			"owner": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"ports": {
 				Type:     schema.TypeSet,
@@ -170,6 +172,7 @@ func resourceNodeV1() *schema.Resource {
 			"power_state_timeout": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				Computed: true,
 			},
 		},
 	}
