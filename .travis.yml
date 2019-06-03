@@ -14,9 +14,9 @@ services:
 before_install:
   - sudo apt-get install -y genisoimage
 before_script:
-  - docker run -d --net host --privileged --name mariadb --entrypoint /bin/runmariadb quay.io/metal3-io/ironic
-  - docker run -d --net host --privileged -e "IP=0.0.0.0" --name ironic quay.io/metal3-io/ironic
-  - docker run -d --net host --privileged -e "IP=0.0.0.0" --net host quay.io/metal3-io/ironic-inspector
+  - docker run -d --net host --privileged --name mariadb --entrypoint /bin/runmariadb quay.io/metal3-io/ironic:master
+  - docker run -d --net host --privileged -e "IP=0.0.0.0" --name ironic quay.io/metal3-io/ironic:master
+  - docker run -d --net host --privileged -e "IP=0.0.0.0" --net host quay.io/metal3-io/ironic-inspector:master
   - docker run --net host -e TARGETS=127.0.0.1:3306,127.0.0.1:6385,127.0.0.1:5050 -e TIMEOUT=60 waisbrot/wait
 script:
   - make fmt
