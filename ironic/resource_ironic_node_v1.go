@@ -180,7 +180,7 @@ func resourceNodeV1() *schema.Resource {
 
 // Create a node, including driving Ironic's state machine
 func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	// Create the node object in Ironic
 	createOpts := schemaToCreateOpts(d)
@@ -266,7 +266,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 
 // Read the node's data from Ironic
 func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	node, err := nodes.Get(client, d.Id()).Extract()
 	if err != nil {
@@ -306,7 +306,7 @@ func resourceNodeV1Read(d *schema.ResourceData, meta interface{}) error {
 
 // Update a node's state based on the terraform config - TODO: handle everything
 func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	d.Partial(true)
 
@@ -403,7 +403,7 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 
 // Delete a node from Ironic
 func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 	if err := ChangeProvisionStateToTarget(client, d.Id(), "deleted", nil); err != nil {
 		return err
 	}

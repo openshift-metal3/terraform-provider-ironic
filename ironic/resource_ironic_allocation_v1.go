@@ -68,7 +68,7 @@ func resourceAllocationV1() *schema.Resource {
 
 // Create an allocation, including driving Ironic's state machine
 func resourceAllocationV1Create(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	result, err := allocations.Create(client, allocationSchemaToCreateOpts(d)).Extract()
 	if err != nil {
@@ -110,7 +110,7 @@ func resourceAllocationV1Create(d *schema.ResourceData, meta interface{}) error 
 
 // Read the allocation's data from Ironic
 func resourceAllocationV1Read(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	result, err := allocations.Get(client, d.Id()).Extract()
 	if err != nil {
@@ -131,7 +131,7 @@ func resourceAllocationV1Read(d *schema.ResourceData, meta interface{}) error {
 
 // Delete an allocation from Ironic if it exists
 func resourceAllocationV1Delete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	_, err := allocations.Get(client, d.Id()).Extract()
 	if _, ok := err.(gophercloud.ErrDefault404); ok {
