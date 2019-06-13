@@ -169,7 +169,7 @@
   version = "v2.0.4"
 
 [[projects]]
-  digest = "1:e52de3e3115bc138c4e32d93d794b588d94c5306ce708f0f8e5c635e07504a09"
+  digest = "1:62f8400a14a90bd0004474b98f287a6715724db3e09f9cb1780503b9ff4c9bd5"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -177,7 +177,10 @@
     "openstack/baremetal/v1/allocations",
     "openstack/baremetal/v1/nodes",
     "openstack/baremetal/v1/ports",
+    "openstack/baremetalintrospection/noauth",
+    "openstack/baremetalintrospection/v1/introspection",
     "pagination",
+    "testhelper",
   ]
   pruneopts = "UT"
   revision = "7892efa714f10951c5483a28c7471d8051b12975"
@@ -782,6 +785,9 @@
     "github.com/gophercloud/gophercloud/openstack/baremetal/v1/allocations",
     "github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes",
     "github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports",
+    "github.com/gophercloud/gophercloud/openstack/baremetalintrospection/noauth",
+    "github.com/gophercloud/gophercloud/openstack/baremetalintrospection/v1/introspection",
+    "github.com/gophercloud/gophercloud/testhelper",
     "github.com/gophercloud/utils/openstack/baremetal/v1/nodes",
     "github.com/hashicorp/terraform/config",
     "github.com/hashicorp/terraform/helper/resource",

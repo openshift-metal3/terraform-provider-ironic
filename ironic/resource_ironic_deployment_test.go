@@ -39,7 +39,7 @@ func TestAccIronicDeployment(t *testing.T) {
 }
 
 func testAccDeploymentDestroy(state *terraform.State) error {
-	client := testAccProvider.Meta().(*gophercloud.ServiceClient)
+	client := testAccProvider.Meta().(Clients).Ironic
 
 	for _, rs := range state.RootModule().Resources {
 		if rs.Type != "ironic_node_v1" {

@@ -55,7 +55,7 @@ func TestAccIronicAllocation(t *testing.T) {
 // Calls gophercloud directly to ensure the allocation exists
 func testAccCheckAllocationExists(name string, allocation *allocations.Allocation) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
-		client := testAccProvider.Meta().(*gophercloud.ServiceClient)
+		client := testAccProvider.Meta().(Clients).Ironic
 
 		rs, ok := state.RootModule().Resources[name]
 		if !ok {
@@ -79,7 +79,7 @@ func testAccCheckAllocationExists(name string, allocation *allocations.Allocatio
 
 // Calls gophercloud to ensure the allocation was destroyed
 func testAccAllocationDestroy(state *terraform.State) error {
-	client := testAccProvider.Meta().(*gophercloud.ServiceClient)
+	client := testAccProvider.Meta().(Clients).Ironic
 
 	for _, rs := range state.RootModule().Resources {
 		if rs.Type != "ironic_allocation_v1" {

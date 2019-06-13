@@ -2,7 +2,6 @@ package ironic
 
 import (
 	"fmt"
-	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -60,7 +59,7 @@ func resourceDeployment() *schema.Resource {
 
 // Create an deployment, including driving Ironic's state machine
 func resourceDeploymentCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	// Reload the resource before returning
 	defer resourceDeploymentRead(d, meta)
@@ -95,7 +94,7 @@ func resourceDeploymentCreate(d *schema.ResourceData, meta interface{}) error {
 
 // Read the deployment's data from Ironic
 func resourceDeploymentRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 
 	// Ensure node exists first
 	id := d.Get("node_uuid").(string)
@@ -112,6 +111,6 @@ func resourceDeploymentRead(d *schema.ResourceData, meta interface{}) error {
 
 // Delete an deployment from Ironic - this cleans the node and returns it's state to 'available'
 func resourceDeploymentDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*gophercloud.ServiceClient)
+	client := meta.(Clients).Ironic
 	return ChangeProvisionStateToTarget(client, d.Id(), "deleted", nil)
 }

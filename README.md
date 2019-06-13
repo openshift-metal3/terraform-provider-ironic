@@ -10,9 +10,13 @@ Currently the provider only supports standalone noauth Ironic.  At a
 minimum, the Ironic endpoint URL must be specified. The user may also
 optionally specify an API microversion.
 
+If you are using Ironic inspector, you may also specify the inspector
+URL if you'd like to use the introspection data source.
+
 ```terraform
 provider "ironic" {
   url          = "http://localhost:6385/v1"
+  inspector    = "http://localhost:5050/v1"
   microversion = "1.52"
 }
 ```
@@ -130,6 +134,29 @@ resource "ironic_deployment" "masters" {
   metadata     = var.metadata
 }
 ```
+
+# Data Sources
+
+## Introspection
+
+When using Ironic inspector, you can use this data source to gather selected information such as network
+interface information, number of CPU's and architecture, and memory.
+
+```terraform
+data "ironic_introspection" "openshift-master-0" {
+  uuid = ironic_node_v1.openshift-master-0.id
+}
+```
+
+Available data points are:
+
+  - cpu_count
+  - cpu_arch
+  - memory_mb
+  - interfaces, which include:
+    - name
+    - ip
+    - mac
 
 # License
 
