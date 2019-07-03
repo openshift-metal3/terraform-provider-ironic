@@ -13,11 +13,17 @@ optionally specify an API microversion.
 If you are using Ironic inspector, you may also specify the inspector
 URL if you'd like to use the introspection data source.
 
+The timeout option sets the number of seconds that the provider will wait
+for the Ironic or Inspector API's to become available. This is useful in cases
+where another terraform provider is responsible for bringing up the Ironic
+infrastructure.
+
 ```terraform
 provider "ironic" {
   url          = "http://localhost:6385/v1"
   inspector    = "http://localhost:5050/v1"
   microversion = "1.52"
+  timeout      = 900
 }
 ```
 

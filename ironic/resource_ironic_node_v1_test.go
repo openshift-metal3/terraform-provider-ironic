@@ -103,7 +103,10 @@ func TestAccIronicNode(t *testing.T) {
 
 func CheckNodeExists(name string, node *nodes.Node) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
-		client := testAccProvider.Meta().(Clients).Ironic
+		client, err := testAccProvider.Meta().(*Clients).GetIronicClient()
+		if err != nil {
+			return err
+		}
 
 		rs, ok := state.RootModule().Resources[name]
 		if !ok {
@@ -126,7 +129,10 @@ func CheckNodeExists(name string, node *nodes.Node) resource.TestCheckFunc {
 }
 
 func testAccNodeDestroy(state *terraform.State) error {
-	client := testAccProvider.Meta().(Clients).Ironic
+	client, err := testAccProvider.Meta().(*Clients).GetIronicClient()
+	if err != nil {
+		return err
+	}
 
 	for _, rs := range state.RootModule().Resources {
 		if rs.Type != "ironic_node_v1" {
