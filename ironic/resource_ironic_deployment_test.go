@@ -39,7 +39,10 @@ func TestAccIronicDeployment(t *testing.T) {
 }
 
 func testAccDeploymentDestroy(state *terraform.State) error {
-	client := testAccProvider.Meta().(Clients).Ironic
+	client, err := testAccProvider.Meta().(*Clients).GetIronicClient()
+	if err != nil {
+		return err
+	}
 
 	for _, rs := range state.RootModule().Resources {
 		if rs.Type != "ironic_node_v1" {

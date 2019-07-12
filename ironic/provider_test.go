@@ -3,13 +3,14 @@
 package ironic
 
 import (
-	"os"
-	"testing"
-
+	gth "github.com/gophercloud/gophercloud/testhelper"
 	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
+	"net/http"
+	"os"
+	"testing"
 )
 
 var testAccProviders map[string]terraform.ResourceProvider
@@ -48,6 +49,27 @@ func TestProvider(t *testing.T) {
 	th.AssertNoError(t, err)
 }
 
+func TestProvider_clientTimeout(t *testing.T) {
+	p := Provider()
+
+	// Setup HTTP server listening for the API request
+	gth.SetupHTTP()
+	defer gth.TeardownHTTP()
+	handleProviderTimeoutRequest(t)
+
+	raw, err := config.NewRawConfig(map[string]interface{}{
+		"url":     gth.Server.URL + "/",
+		"timeout": 90,
+	})
+	th.AssertNoError(t, err)
+	err = p.Configure(terraform.NewResourceConfig(raw))
+	th.AssertNoError(t, err)
+
+	client := p.(*schema.Provider).Meta().(*Clients)
+	_, err = client.GetIronicClient()
+	th.AssertError(t, err, "could not contact API")
+}
+
 func TestProvider_urlRequired(t *testing.T) {
 	testAccPreCheck(t)
 
@@ -62,4 +84,10 @@ func TestProvider_urlRequired(t *testing.T) {
 	th.AssertError(t, err, "url is required")
 
 	os.Setenv("IRONIC_ENDPOINT", ironicEndpoint)
+}
+
+func handleProviderTimeoutRequest(t *testing.T) {
+	gth.Mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "This endpoint will never succeed.", http.StatusInternalServerError)
+	})
 }
