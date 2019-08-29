@@ -265,12 +265,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:950caca7dfcf796419232ba996c9c3539d09f26af27ba848c4508e604c13efbb"
+  digest = "1:88e0b0baeb9072f0a4afbcf12dda615fc8be001d1802357538591155998da21b"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d40cf49b3a77bba84a7afdbd7f1dc295d114efb1"
-  version = "v1.1.0"
+  revision = "ac23dc3fea5d1a983c43f6a0f6e2c13f0195d8bd"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:67474f760e9ac3799f740db2c489e6423a4cde45520673ec123ac831ad849cb8"
@@ -792,6 +792,7 @@
     "github.com/gophercloud/gophercloud/pagination",
     "github.com/gophercloud/gophercloud/testhelper",
     "github.com/gophercloud/utils/openstack/baremetal/v1/nodes",
+    "github.com/hashicorp/go-version",
     "github.com/hashicorp/terraform/config",
     "github.com/hashicorp/terraform/helper/resource",
     "github.com/hashicorp/terraform/helper/schema",
