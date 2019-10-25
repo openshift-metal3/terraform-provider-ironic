@@ -38,6 +38,20 @@ func TestAccIronicDeployment(t *testing.T) {
 	})
 }
 
+func TestBuildConfigDrive(t *testing.T) {
+	configDrive, err := buildConfigDrive("1.48", "foo", nil, nil)
+	th.AssertNoError(t, err)
+
+	if _, ok := configDrive.(*string); !ok {
+		t.Fatalf("Expected config drive to be *string (base64-encoded gzipped ISO).")
+	}
+
+	configDrive, err = buildConfigDrive("1.56", "foo", nil, nil)
+	if _, ok := configDrive.(*nodes.ConfigDrive); !ok {
+		t.Fatalf("Expected config drive to be *nodes.ConfigDrive")
+	}
+}
+
 func testAccDeploymentDestroy(state *terraform.State) error {
 	client, err := testAccProvider.Meta().(*Clients).GetIronicClient()
 	if err != nil {
