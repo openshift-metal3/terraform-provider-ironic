@@ -3,14 +3,15 @@
 package ironic
 
 import (
-	gth "github.com/gophercloud/gophercloud/testhelper"
-	"github.com/hashicorp/terraform/config"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
-	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 	"net/http"
 	"os"
 	"testing"
+
+	gth "github.com/gophercloud/gophercloud/testhelper"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform/config"
+	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
 var testAccProviders map[string]terraform.ResourceProvider
