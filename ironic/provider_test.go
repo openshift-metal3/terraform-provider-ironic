@@ -3,14 +3,14 @@
 package ironic
 
 import (
-	gth "github.com/gophercloud/gophercloud/testhelper"
-	"github.com/hashicorp/terraform/config"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
-	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 	"net/http"
 	"os"
 	"testing"
+
+	gth "github.com/gophercloud/gophercloud/testhelper"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
 var testAccProviders map[string]terraform.ResourceProvider
@@ -39,13 +39,11 @@ func TestProvider(t *testing.T) {
 	testAccPreCheck(t)
 
 	p := Provider()
-	raw, err := config.NewRawConfig(map[string]interface{}{
+	raw := map[string]interface{}{
 		"url":          "http://localhost:6385/v1",
 		"microversion": "1.52",
-	})
-	th.AssertNoError(t, err)
-
-	err = p.Configure(terraform.NewResourceConfig(raw))
+	}
+	err := p.Configure(terraform.NewResourceConfigRaw(raw))
 	th.AssertNoError(t, err)
 }
 
@@ -57,12 +55,11 @@ func TestProvider_clientTimeout(t *testing.T) {
 	defer gth.TeardownHTTP()
 	handleProviderTimeoutRequest(t)
 
-	raw, err := config.NewRawConfig(map[string]interface{}{
+	raw := map[string]interface{}{
 		"url":     gth.Server.URL + "/",
 		"timeout": 90,
-	})
-	th.AssertNoError(t, err)
-	err = p.Configure(terraform.NewResourceConfig(raw))
+	}
+	err := p.Configure(terraform.NewResourceConfigRaw(raw))
 	th.AssertNoError(t, err)
 
 	client := p.(*schema.Provider).Meta().(*Clients)
@@ -74,13 +71,12 @@ func TestProvider_urlRequired(t *testing.T) {
 	testAccPreCheck(t)
 
 	p := Provider()
-	raw, err := config.NewRawConfig(map[string]interface{}{})
-	th.AssertNoError(t, err)
+	raw := map[string]interface{}{}
 
 	ironicEndpoint := os.Getenv("IRONIC_ENDPOINT")
 	os.Unsetenv("IRONIC_ENDPOINT")
 
-	err = p.Configure(terraform.NewResourceConfig(raw))
+	err := p.Configure(terraform.NewResourceConfigRaw(raw))
 	th.AssertError(t, err, "url is required")
 
 	os.Setenv("IRONIC_ENDPOINT", ironicEndpoint)

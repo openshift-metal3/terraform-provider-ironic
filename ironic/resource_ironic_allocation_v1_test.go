@@ -9,8 +9,8 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/allocations"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
