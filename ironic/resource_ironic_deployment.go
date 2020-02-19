@@ -1,7 +1,12 @@
 package ironic
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 	utils "github.com/gophercloud/utils/openstack/baremetal/v1/nodes"
 	"github.com/hashicorp/go-version"
@@ -32,6 +37,16 @@ func resourceDeployment() *schema.Resource {
 				ForceNew: true,
 			},
 			"user_data": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"user_data_url": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"user_data_url_ca_cert": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
@@ -84,9 +99,43 @@ func resourceDeploymentCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(d.Get("node_uuid").(string))
+	// FIXME: only retrieves from URL when a cert is defined
+	// The cert is base64 encoded from the installer
+	userDataURL := d.Get("user_data_url")
+	userData := d.Get("user_data")
+	if userDataURL != "" {
+		caCertPool := x509.NewCertPool()
+		userDataCaCert := d.Get("user_data_url_ca_cert")
+		if userDataCaCert != "" {
+			caCert, err := base64.StdEncoding.DecodeString(userDataCaCert.(string))
+			if err != nil {
+				return fmt.Errorf("could not decode user_data_url_ca_cert: %s", err)
+			}
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				},
+			},
+		}
+
+		// Get the data
+		resp, err := client.Get(userDataURL.(string))
+		if err != nil {
+			return fmt.Errorf("could not get user_data_url: %s", err)
+		}
+		defer resp.Body.Close()
+		userData, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("could not read user_data_url: %s", err)
+		}
+	}
 
 	configDrive, err := buildConfigDrive(client.Microversion,
-		d.Get("user_data").(string),
+		userData.(string),
 		d.Get("network_data").(map[string]interface{}),
 		d.Get("metadata").(map[string]interface{}))
 	if err != nil {
