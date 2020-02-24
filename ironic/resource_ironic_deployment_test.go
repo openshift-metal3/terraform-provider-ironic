@@ -3,7 +3,11 @@
 package ironic
 
 import (
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/gophercloud/gophercloud"
@@ -110,4 +114,62 @@ func testAccDeploymentResource(node, resourceClass, allocation string) string {
 		}
 
 `, node, node, resourceClass, allocation, allocation, resourceClass, node, node, node, allocation)
+}
+
+func TestFetchFullIgnition(t *testing.T) {
+	// Setup a fake https endpoint to server full ignition
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Full Ignition")
+	}))
+	defer server.Close()
+
+	cert := server.Certificate()
+	certInPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cert.Raw,
+		},
+	)
+	certB64 := base64.URLEncoding.EncodeToString(certInPem)
+
+	testCases := []struct {
+		Scenario          string
+		UserDataURL       string
+		UserDataURLCACert string
+		ExpectResult      bool
+	}{
+		{
+			Scenario:          "user data url and ca cert present",
+			UserDataURL:       server.URL,
+			UserDataURLCACert: certB64,
+			ExpectResult:      true,
+		},
+		{
+			Scenario:          "user data url present but no ca cert",
+			UserDataURL:       server.URL,
+			UserDataURLCACert: "",
+			ExpectResult:      true,
+		},
+		{
+			Scenario:          "user data url is not present but ca cert is",
+			UserDataURL:       "",
+			UserDataURLCACert: certB64,
+			ExpectResult:      false,
+		},
+		{
+			Scenario:          "neither user data url nor ca cert is not present",
+			UserDataURL:       "",
+			UserDataURLCACert: "",
+			ExpectResult:      false,
+		},
+	}
+	for _, tc := range testCases {
+		userData := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert)
+		if tc.ExpectResult && (userData != "Full Ignition\n") {
+			t.Errorf("expected userData: %s, got %s", "Full Ignition\n", userData)
+		}
+		if !tc.ExpectResult && (userData != "") {
+			t.Errorf("expected userData: %s, got %s", "", userData)
+		}
+	}
 }
