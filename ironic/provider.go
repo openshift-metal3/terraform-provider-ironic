@@ -58,7 +58,7 @@ func (c *Clients) GetIronicClient() (*gophercloud.ServiceClient, error) {
 	}
 
 	// Wait the specified interval for Ironic to come up
-	err := waitForAPI(c.timeout, c.ironic)
+	err := waitForAPI(c.timeout, c.ironic, true)
 	if err != nil {
 		c.ironicFailed = true
 		return nil, err
@@ -82,7 +82,7 @@ func (c *Clients) GetInspectorClient() (*gophercloud.ServiceClient, error) {
 		return nil, fmt.Errorf("could not contact API: timeout reached")
 	}
 
-	err := waitForAPI(c.timeout, c.inspector)
+	err := waitForAPI(c.timeout, c.inspector, false)
 	if err != nil {
 		c.inspectorFailed = true
 		return nil, err
@@ -184,7 +184,7 @@ func configureProvider(schema *schema.ResourceData) (interface{}, error) {
 // Retries an API until a timeout is reached. The timeout is approximate, we calculate approximately
 // the number of attempts that would equal that timeout. It's not exact, but it will be *at least* the
 // value specified.
-func waitForAPI(timeout int, client *gophercloud.ServiceClient) error {
+func waitForAPI(timeout int, client *gophercloud.ServiceClient, waitForDrivers bool) error {
 	var maxTries int
 	if timeout < 5 {
 		maxTries = 1
@@ -208,20 +208,28 @@ func waitForAPI(timeout int, client *gophercloud.ServiceClient) error {
 			statusCode := r.StatusCode
 			r.Body.Close()
 			if statusCode == http.StatusOK {
-				log.Printf("[DEBUG] API successfully connected, waiting for conductor...")
-				driverCount := 0
-				drivers.ListDrivers(client, drivers.ListDriversOpts{
-					Detail: false,
-				}).EachPage(func(page pagination.Page) (bool, error) {
-					actual, err := drivers.ExtractDrivers(page)
-					if err != nil {
-						return false, err
+
+				// For Ironic API, we need to make sure conductor is up as well, otherwise it's not really
+				// ready to start provisioning hosts. If it's inspector, we can just return once it
+				// responds StatusOK.
+				if waitForDrivers {
+					log.Printf("[DEBUG] API successfully connected, waiting for conductor...")
+					driverCount := 0
+					drivers.ListDrivers(client, drivers.ListDriversOpts{
+						Detail: false,
+					}).EachPage(func(page pagination.Page) (bool, error) {
+						actual, err := drivers.ExtractDrivers(page)
+						if err != nil {
+							return false, err
+						}
+						driverCount += len(actual)
+						return true, nil
+					})
+					// If we have any drivers, conductor is up.
+					if driverCount > 0 {
+						return nil
 					}
-					driverCount += len(actual)
-					return true, nil
-				})
-				// If we have any drivers, conductor is up.
-				if driverCount > 0 {
+				} else {
 					return nil
 				}
 			}
