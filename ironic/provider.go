@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/baremetal/noauth"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/httpbasic"
+	"github.com/gophercloud/gophercloud/openstack/baremetal/noauth"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/drivers"
-	noauthintrospection "github.com/gophercloud/gophercloud/openstack/baremetalintrospection/noauth"
 	httpbasicintrospection "github.com/gophercloud/gophercloud/openstack/baremetalintrospection/httpbasic"
+	noauthintrospection "github.com/gophercloud/gophercloud/openstack/baremetalintrospection/noauth"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -63,7 +63,7 @@ func (c *Clients) GetIronicClient() (*gophercloud.ServiceClient, error) {
 
 	// We previously tried and it failed.
 	if c.ironicFailed {
-		return nil, fmt.Errorf("could not contact API: timeout reached")
+		return nil, fmt.Errorf("could not contact Ironic API: timeout reached")
 	}
 
 	// Let's poll the API until it's up, or times out.
@@ -85,7 +85,7 @@ func (c *Clients) GetIronicClient() (*gophercloud.ServiceClient, error) {
 	case <-ctx.Done():
 		if err := ctx.Err(); err != nil {
 			c.ironicFailed = true
-			return nil, fmt.Errorf("could not contact API: %w", err)
+			return nil, fmt.Errorf("could not contact Ironic API: %w", err)
 		}
 	case <-done:
 	}
@@ -107,7 +107,7 @@ func (c *Clients) GetInspectorClient() (*gophercloud.ServiceClient, error) {
 	} else if c.inspectorUp || c.timeout == 0 {
 		return c.inspector, nil
 	} else if c.inspectorFailed {
-		return nil, fmt.Errorf("could not contact API: timeout reached")
+		return nil, fmt.Errorf("could not contact Inspector API: timeout reached")
 	}
 
 	// Let's poll the API until it's up, or times out.

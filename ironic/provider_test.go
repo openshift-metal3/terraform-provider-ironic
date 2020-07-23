@@ -64,7 +64,7 @@ func TestProvider_clientTimeout(t *testing.T) {
 
 	client := p.(*schema.Provider).Meta().(*Clients)
 	_, err = client.GetIronicClient()
-	th.AssertError(t, err, "could not contact API")
+	th.AssertError(t, err, "could not contact Ironic API")
 }
 
 func TestProvider_urlRequired(t *testing.T) {
