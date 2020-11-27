@@ -164,7 +164,10 @@ func TestFetchFullIgnition(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		userData := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert)
+		userData, err := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert)
+		if err != nil {
+			t.Errorf("expected err: %s", err)
+		}
 		if tc.ExpectResult && (userData != "Full Ignition\n") {
 			t.Errorf("expected userData: %s, got %s", "Full Ignition\n", userData)
 		}
