@@ -164,7 +164,8 @@ func TestFetchFullIgnition(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		userData, err := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert)
+		emptyHeaders := make(map[string]interface{})
+		userData, err := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert, emptyHeaders)
 		if err != nil {
 			t.Errorf("expected err: %s", err)
 		}
