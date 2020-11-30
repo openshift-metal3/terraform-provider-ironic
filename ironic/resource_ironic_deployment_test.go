@@ -119,6 +119,11 @@ func testAccDeploymentResource(node, resourceClass, allocation string) string {
 func TestFetchFullIgnition(t *testing.T) {
 	// Setup a fake https endpoint to server full ignition
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range r.Header {
+			if k == "Test" {
+				fmt.Fprintf(w, "Header: %s=%s\n", k, v)
+			}
+		}
 		fmt.Fprintln(w, "Full Ignition")
 	}))
 	defer server.Close()
@@ -131,49 +136,58 @@ func TestFetchFullIgnition(t *testing.T) {
 		},
 	)
 	certB64 := base64.URLEncoding.EncodeToString(certInPem)
+	emptyHeaders := make(map[string]interface{})
 
 	testCases := []struct {
-		Scenario          string
-		UserDataURL       string
-		UserDataURLCACert string
-		ExpectResult      bool
+		Scenario           string
+		UserDataURL        string
+		UserDataURLCACert  string
+		UserDataURLHeaders map[string]interface{}
+		ExpectedResult     string
 	}{
 		{
-			Scenario:          "user data url and ca cert present",
-			UserDataURL:       server.URL,
-			UserDataURLCACert: certB64,
-			ExpectResult:      true,
+			Scenario:           "user data url and ca cert present",
+			UserDataURL:        server.URL,
+			UserDataURLCACert:  certB64,
+			UserDataURLHeaders: emptyHeaders,
+			ExpectedResult:     "Full Ignition\n",
 		},
 		{
-			Scenario:          "user data url present but no ca cert",
-			UserDataURL:       server.URL,
-			UserDataURLCACert: "",
-			ExpectResult:      true,
+			Scenario:           "user data url present but no ca cert",
+			UserDataURL:        server.URL,
+			UserDataURLCACert:  "",
+			UserDataURLHeaders: emptyHeaders,
+			ExpectedResult:     "Full Ignition\n",
 		},
 		{
-			Scenario:          "user data url is not present but ca cert is",
-			UserDataURL:       "",
-			UserDataURLCACert: certB64,
-			ExpectResult:      false,
+			Scenario:           "user data url, ca cert and headers present",
+			UserDataURL:        server.URL,
+			UserDataURLCACert:  certB64,
+			UserDataURLHeaders: map[string]interface{}{"Test": "foo"},
+			ExpectedResult:     "Header: Test=[foo]\nFull Ignition\n",
 		},
 		{
-			Scenario:          "neither user data url nor ca cert is not present",
-			UserDataURL:       "",
-			UserDataURLCACert: "",
-			ExpectResult:      false,
+			Scenario:           "user data url is not present but ca cert is",
+			UserDataURL:        "",
+			UserDataURLCACert:  certB64,
+			UserDataURLHeaders: emptyHeaders,
+			ExpectedResult:     "",
+		},
+		{
+			Scenario:           "neither user data url nor ca cert is not present",
+			UserDataURL:        "",
+			UserDataURLCACert:  "",
+			UserDataURLHeaders: emptyHeaders,
+			ExpectedResult:     "",
 		},
 	}
 	for _, tc := range testCases {
-		emptyHeaders := make(map[string]interface{})
-		userData, err := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert, emptyHeaders)
+		userData, err := fetchFullIgnition(tc.UserDataURL, tc.UserDataURLCACert, tc.UserDataURLHeaders)
 		if err != nil {
 			t.Errorf("expected err: %s", err)
 		}
-		if tc.ExpectResult && (userData != "Full Ignition\n") {
-			t.Errorf("expected userData: %s, got %s", "Full Ignition\n", userData)
-		}
-		if !tc.ExpectResult && (userData != "") {
-			t.Errorf("expected userData: %s, got %s", "", userData)
+		if userData != tc.ExpectedResult {
+			t.Errorf("expected userData: %s, got %s", tc.ExpectedResult, userData)
 		}
 	}
 }
