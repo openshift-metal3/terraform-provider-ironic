@@ -164,6 +164,14 @@ Available data points are:
     - ip
     - mac
 
+# Development
+
+## Running acceptance tests locally
+
+To run the acceptance tests locally, it's necessary to have a local instance of
+ironic and ironic-inspector running.  A similar configuration to that used in
+CI can be achieved by running `hack/local_ironic.sh`
+
 # License
 
 Apache 2.0, See LICENSE file
