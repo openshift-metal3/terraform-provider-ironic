@@ -23,7 +23,6 @@ type provisionStateWorkflow struct {
 // ChangeProvisionStateToTarget drives Ironic's state machine through the process to reach our desired end state. This requires multiple
 // possibly long-running steps.  If required, we'll build a config drive ISO for deployment.
 func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string, target nodes.TargetProvisionState, configDrive interface{}) error {
-
 	// Run the provisionStateWorkflow - this could take a while
 	wf := provisionStateWorkflow{
 		target:      target,
@@ -107,18 +106,28 @@ func (workflow *provisionStateWorkflow) toManageable() (bool, error) {
 // Clean a node
 func (workflow *provisionStateWorkflow) toClean() (bool, error) {
 	// Node must be manageable first
-	_ = workflow.reloadNode()
+	err := workflow.reloadNode()
+	if err != nil {
+		return true, err
+	}
 	if workflow.node.ProvisionState != string(nodes.Manageable) {
-		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil); err != nil {
+		err = ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil)
+		if err != nil {
 			return true, err
 		}
 	}
 
 	// Set target to clean
-	_, _ = workflow.changeProvisionState(nodes.TargetClean)
+	_, err = workflow.changeProvisionState(nodes.TargetClean)
+	if err != nil {
+		return true, err
+	}
 
 	for {
-		_ = workflow.reloadNode()
+		err = workflow.reloadNode()
+		if err != nil {
+			return true, err
+		}
 		state := workflow.node.ProvisionState
 
 		switch state {
@@ -137,7 +146,10 @@ func (workflow *provisionStateWorkflow) toClean() (bool, error) {
 // Inspect a node
 func (workflow *provisionStateWorkflow) toInspect() (bool, error) {
 	// Node must be manageable first
-	_ = workflow.reloadNode()
+	err := workflow.reloadNode()
+	if err != nil {
+		return true, err
+	}
 	if workflow.node.ProvisionState != string(nodes.Manageable) {
 		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil); err != nil {
 			return true, err
@@ -145,10 +157,16 @@ func (workflow *provisionStateWorkflow) toInspect() (bool, error) {
 	}
 
 	// Set target to inspect
-	_, _ = workflow.changeProvisionState(nodes.TargetInspect)
+	_, err = workflow.changeProvisionState(nodes.TargetInspect)
+	if err != nil {
+		return true, err
+	}
 
 	for {
-		_ = workflow.reloadNode()
+		err = workflow.reloadNode()
+		if err != nil {
+			return true, err
+		}
 		state := workflow.node.ProvisionState
 
 		switch state {
@@ -192,7 +210,6 @@ func (workflow *provisionStateWorkflow) toAvailable() (bool, error) {
 
 // Change a node to "active" state
 func (workflow *provisionStateWorkflow) toActive() (bool, error) {
-
 	switch state := workflow.node.ProvisionState; state {
 	case "active":
 		// We're done!
