@@ -44,8 +44,12 @@ func (workflow *provisionStateWorkflow) run() error {
 		log.Printf("[DEBUG] Node is in state '%s'", workflow.node.ProvisionState)
 
 		done, err := workflow.next()
-		if done || err != nil {
-			return err
+		if err != nil {
+			_ = workflow.reloadNode() // to get the lastError
+			return fmt.Errorf("%w , last error was '%s'", err, workflow.node.LastError)
+		}
+		if done {
+			return nil
 		}
 
 		time.Sleep(workflow.wait)
@@ -125,7 +129,7 @@ func (workflow *provisionStateWorkflow) toClean() (bool, error) {
 			// Not done, no error - Ironic is working
 			continue
 		default:
-			return true, fmt.Errorf("could not clean node, node is currently '%s', last error was '%s'", state, workflow.node.LastError)
+			return true, fmt.Errorf("could not clean node, node is currently '%s'", state)
 		}
 	}
 }
@@ -155,7 +159,7 @@ func (workflow *provisionStateWorkflow) toInspect() (bool, error) {
 			// Not done, no error - Ironic is working
 			continue
 		default:
-			return true, fmt.Errorf("could not inspect node, node is currently '%s', last error was '%s'", state, workflow.node.LastError)
+			return true, fmt.Errorf("could not inspect node, node is currently '%s'", state)
 		}
 	}
 }
