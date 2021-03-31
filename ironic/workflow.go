@@ -279,6 +279,12 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 	if target == "active" {
 		opts.ConfigDrive = workflow.configDrive
 	}
+	if target == "clean" {
+		opts.CleanSteps = []nodes.CleanStep{}
+		// TODO if we want to actually clean, then we need clean_steps
+		// currently bmo does quite a lot of work to get raid cleaning working.
+		// https://github.com/metal3-io/baremetal-operator/blob/master/pkg/provisioner/ironic/ironic.go#L1249-L1292
+	}
 
 	return &opts, nil
 }
@@ -289,6 +295,10 @@ func (workflow *provisionStateWorkflow) changeProvisionState(target nodes.Target
 	if err != nil {
 		log.Printf("[ERROR] Unable to construct provisioning state options: %s", err.Error())
 		return true, err
+	}
+
+	if target == "clean" && len(opts.CleanSteps) == 0 {
+		return true, nil
 	}
 
 	interval := 5 * time.Second

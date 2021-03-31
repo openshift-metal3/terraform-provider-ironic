@@ -84,11 +84,11 @@ func dataSourceIronicIntrospectionRead(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return err
 	}
-	err = d.Set("finished_at", status.FinishedAt)
+	err = d.Set("finished_at", status.FinishedAt.Format("2006-01-02T15:04:05"))
 	if err != nil {
 		return err
 	}
-	err = d.Set("started_at", status.StartedAt)
+	err = d.Set("started_at", status.StartedAt.Format("2006-01-02T15:04:05"))
 	if err != nil {
 		return err
 	}
