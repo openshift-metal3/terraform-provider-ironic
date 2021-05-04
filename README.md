@@ -133,6 +133,7 @@ resource "ironic_deployment" "masters" {
   instance_info = {
     image_source   = "http://172.22.0.1/images/redhat-coreos-maipo-latest.qcow2"
     image_checksum = "26c53f3beca4e0b02e09d335257826fd"
+    capabilities   = "boot_option:local,secure_boot:true"
   }
 
   user_data    = var.user_data
