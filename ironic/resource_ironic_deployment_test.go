@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"reflect"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -188,6 +189,32 @@ func TestFetchFullIgnition(t *testing.T) {
 		}
 		if userData != tc.ExpectedResult {
 			t.Errorf("expected userData: %s, got %s", tc.ExpectedResult, userData)
+		}
+	}
+}
+
+func TestBuildDeploySteps(t *testing.T) {
+        var deploySteps []nodes.DeployStep
+	testCases := []struct {
+		Scenario    string
+		DeploySteps string
+		Expected []nodes.DeployStep
+	}{
+		{
+			Scenario:    "correct deploy_step format",
+			DeploySteps: `[{"interface": "deploy", "step": "install_coreos", "priority": 80, "args": {}}]`,
+			Expected: deploySteps,
+		},
+		{
+			Scenario:    "incorrect deploy_step format",
+			DeploySteps: "wrong json",
+			Expected:    nil,
+		},
+	}
+	for _, tc := range testCases {
+		ds, _ := buildDeploySteps(tc.DeploySteps)
+		if reflect.TypeOf(ds) != reflect.TypeOf(tc.Expected) {
+			t.Errorf("expected deployStep type: %v but got %v", tc.Scenario, reflect.TypeOf(ds))
 		}
 	}
 }

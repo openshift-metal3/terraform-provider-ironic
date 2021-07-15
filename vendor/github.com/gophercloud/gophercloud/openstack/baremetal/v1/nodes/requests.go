@@ -43,6 +43,8 @@ const (
 	RescueFail   ProvisionState = "rescue failed"
 	Rescuing     ProvisionState = "rescuing"
 	UnrescueFail ProvisionState = "unrescue failed"
+	RescueWait   ProvisionState = "rescue wait"
+	Unrescuing   ProvisionState = "unrescuing"
 )
 
 // TargetProvisionState is used when setting the provision state for a node.
@@ -164,9 +166,10 @@ func ListDetail(client *gophercloud.ServiceClient, opts ListOptsBuilder) paginat
 
 // Get requests details on a single node, by ID.
 func Get(client *gophercloud.ServiceClient, id string) (r GetResult) {
-	_, r.Err = client.Get(getURL(client, id), &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Get(getURL(client, id), &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -178,6 +181,10 @@ type CreateOptsBuilder interface {
 
 // CreateOpts specifies node creation parameters.
 type CreateOpts struct {
+	// The interface to configure automated cleaning for a Node.
+	// Requires microversion 1.47 or later.
+	AutomatedClean *bool `json:"automated_clean,omitempty"`
+
 	// The boot interface for a Node, e.g. “pxe”.
 	BootInterface string `json:"boot_interface,omitempty"`
 
@@ -260,7 +267,8 @@ func Create(client *gophercloud.ServiceClient, opts CreateOptsBuilder) (r Create
 		return
 	}
 
-	_, r.Err = client.Post(createURL(client), reqBody, &r.Body, nil)
+	resp, err := client.Post(createURL(client), reqBody, &r.Body, nil)
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -301,34 +309,37 @@ func Update(client *gophercloud.ServiceClient, id string, opts UpdateOpts) (r Up
 
 		body[i] = result
 	}
-	_, r.Err = client.Patch(updateURL(client, id), body, &r.Body, &gophercloud.RequestOpts{
-		JSONBody: &body,
-		OkCodes:  []int{200},
+	resp, err := client.Patch(updateURL(client, id), body, &r.Body, &gophercloud.RequestOpts{
+		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Delete requests that a node be removed
 func Delete(client *gophercloud.ServiceClient, id string) (r DeleteResult) {
-	_, r.Err = client.Delete(deleteURL(client, id), nil)
+	resp, err := client.Delete(deleteURL(client, id), nil)
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Request that Ironic validate whether the Node’s driver has enough information to manage the Node. This polls each
 // interface on the driver, and returns the status of that interface.
 func Validate(client *gophercloud.ServiceClient, id string) (r ValidateResult) {
-	_, r.Err = client.Get(validateURL(client, id), &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Get(validateURL(client, id), &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Inject NMI (Non-Masking Interrupts) for the given Node. This feature can be used for hardware diagnostics, and
 // actual support depends on a driver.
 func InjectNMI(client *gophercloud.ServiceClient, id string) (r InjectNMIResult) {
-	_, r.Err = client.Put(injectNMIURL(client, id), map[string]string{}, nil, &gophercloud.RequestOpts{
+	resp, err := client.Put(injectNMIURL(client, id), map[string]string{}, nil, &gophercloud.RequestOpts{
 		OkCodes: []int{204},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -362,35 +373,59 @@ func SetBootDevice(client *gophercloud.ServiceClient, id string, bootDevice Boot
 		return
 	}
 
-	_, r.Err = client.Put(bootDeviceURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
+	resp, err := client.Put(bootDeviceURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
 		OkCodes: []int{204},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Get the current boot device for the given Node.
 func GetBootDevice(client *gophercloud.ServiceClient, id string) (r BootDeviceResult) {
-	_, r.Err = client.Get(bootDeviceURL(client, id), &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Get(bootDeviceURL(client, id), &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Retrieve the acceptable set of supported boot devices for a specific Node.
 func GetSupportedBootDevices(client *gophercloud.ServiceClient, id string) (r SupportedBootDeviceResult) {
-	_, r.Err = client.Get(supportedBootDeviceURL(client, id), &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Get(supportedBootDeviceURL(client, id), &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
+
+// An interface type for a deploy (or clean) step.
+type StepInterface string
+
+const (
+	InterfaceBIOS       StepInterface = "bios"
+	InterfaceDeploy     StepInterface = "deploy"
+	InterfaceManagement StepInterface = "management"
+	InterfacePower      StepInterface = "power"
+	InterfaceRAID       StepInterface = "raid"
+)
 
 // A cleaning step has required keys ‘interface’ and ‘step’, and optional key ‘args’. If specified,
 // the value for ‘args’ is a keyword variable argument dictionary that is passed to the cleaning step
 // method.
 type CleanStep struct {
-	Interface string            `json:"interface" required:"true"`
-	Step      string            `json:"step" required:"true"`
-	Args      map[string]string `json:"args,omitempty"`
+	Interface StepInterface          `json:"interface" required:"true"`
+	Step      string                 `json:"step" required:"true"`
+	Args      map[string]interface{} `json:"args,omitempty"`
+}
+
+// A deploy step has required keys ‘interface’, ‘step’, ’args’ and ’priority’.
+// The value for ‘args’ is a keyword variable argument dictionary that is passed to the deploy step
+// method. Priority is a numeric priority at which the step is running.
+type DeployStep struct {
+	Interface StepInterface          `json:"interface" required:"true"`
+	Step      string                 `json:"step" required:"true"`
+	Args      map[string]interface{} `json:"args" required:"true"`
+	Priority  int                    `json:"priority" required:"true"`
 }
 
 // ProvisionStateOptsBuilder allows extensions to add additional parameters to the
@@ -408,11 +443,12 @@ type ConfigDrive struct {
 }
 
 // ProvisionStateOpts for a request to change a node's provision state. A config drive should be base64-encoded
-// gzipped ISO9660 image.
+// gzipped ISO9660 image. Deploy steps are supported starting with API 1.69.
 type ProvisionStateOpts struct {
 	Target         TargetProvisionState `json:"target" required:"true"`
 	ConfigDrive    interface{}          `json:"configdrive,omitempty"`
 	CleanSteps     []CleanStep          `json:"clean_steps,omitempty"`
+	DeploySteps    []DeployStep         `json:"deploy_steps,omitempty"`
 	RescuePassword string               `json:"rescue_password,omitempty"`
 }
 
@@ -435,9 +471,10 @@ func ChangeProvisionState(client *gophercloud.ServiceClient, id string, opts Pro
 		return
 	}
 
-	_, r.Err = client.Put(provisionStateURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
+	resp, err := client.Put(provisionStateURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
 		OkCodes: []int{202},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -481,9 +518,10 @@ func ChangePowerState(client *gophercloud.ServiceClient, id string, opts PowerSt
 		return
 	}
 
-	_, r.Err = client.Put(powerStateURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
+	resp, err := client.Put(powerStateURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
 		OkCodes: []int{202},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -509,6 +547,7 @@ const (
 	RAID10 RAIDLevel = "1+0"
 	RAID50 RAIDLevel = "5+0"
 	RAID60 RAIDLevel = "6+0"
+	JBOD   RAIDLevel = "JBOD"
 )
 
 // DiskType is used to specify the disk type for a logical disk, e.g. hdd or ssd.
@@ -523,9 +562,9 @@ const (
 type InterfaceType string
 
 const (
-	SATA DiskType = "sata"
-	SCSI DiskType = "scsi"
-	SAS  DiskType = "sas"
+	SATA InterfaceType = "sata"
+	SCSI InterfaceType = "scsi"
+	SAS  InterfaceType = "sas"
 )
 
 type LogicalDisk struct {
@@ -558,7 +597,7 @@ type LogicalDisk struct {
 	Controller string `json:"controller,omitempty"`
 
 	// A list of physical disks to use as read by the RAID interface.
-	PhysicalDisks []string `json:"physical_disks,omitempty"`
+	PhysicalDisks []interface{} `json:"physical_disks,omitempty"`
 }
 
 func (opts RAIDConfigOpts) ToRAIDConfigMap() (map[string]interface{}, error) {
@@ -567,10 +606,12 @@ func (opts RAIDConfigOpts) ToRAIDConfigMap() (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	for _, v := range body["logical_disks"].([]interface{}) {
-		if logicalDisk, ok := v.(map[string]interface{}); ok {
-			if logicalDisk["size_gb"] == nil {
-				logicalDisk["size_gb"] = "MAX"
+	if body["logical_disks"] != nil {
+		for _, v := range body["logical_disks"].([]interface{}) {
+			if logicalDisk, ok := v.(map[string]interface{}); ok {
+				if logicalDisk["size_gb"] == nil {
+					logicalDisk["size_gb"] = "MAX"
+				}
 			}
 		}
 	}
@@ -586,8 +627,9 @@ func SetRAIDConfig(client *gophercloud.ServiceClient, id string, raidConfigOptsB
 		return
 	}
 
-	_, r.Err = client.Put(raidConfigURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
+	resp, err := client.Put(raidConfigURL(client, id), reqBody, nil, &gophercloud.RequestOpts{
 		OkCodes: []int{204},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
