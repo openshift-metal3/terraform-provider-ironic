@@ -111,6 +111,10 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"network_data": {
+				Type:     schema.TypeMap,
+				Optional: true,
+			},
 			"power_interface": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -510,6 +514,7 @@ func schemaToCreateOpts(d *schema.ResourceData) *nodes.CreateOpts {
 		ManagementInterface: d.Get("management_interface").(string),
 		Name:                d.Get("name").(string),
 		NetworkInterface:    d.Get("network_interface").(string),
+		NetworkData:         d.Get("network_data").(map[string]interface{}),
 		Owner:               d.Get("owner").(string),
 		PowerInterface:      d.Get("power_interface").(string),
 		Properties:          properties,
