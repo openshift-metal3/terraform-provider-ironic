@@ -6,9 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"reflect"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/gophercloud/gophercloud"
@@ -194,16 +194,16 @@ func TestFetchFullIgnition(t *testing.T) {
 }
 
 func TestBuildDeploySteps(t *testing.T) {
-        var deploySteps []nodes.DeployStep
+	var deploySteps []nodes.DeployStep
 	testCases := []struct {
 		Scenario    string
 		DeploySteps string
-		Expected []nodes.DeployStep
+		Expected    []nodes.DeployStep
 	}{
 		{
 			Scenario:    "correct deploy_step format",
 			DeploySteps: `[{"interface": "deploy", "step": "install_coreos", "priority": 80, "args": {}}]`,
-			Expected: deploySteps,
+			Expected:    deploySteps,
 		},
 		{
 			Scenario:    "incorrect deploy_step format",
