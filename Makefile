@@ -17,6 +17,9 @@ install: default
 	mkdir -p ${TERRAFORM_PLUGINS}
 	mv terraform-provider-ironic ${TERRAFORM_PLUGINS}
 
+fmt-check:
+	go fmt -s -d -e ./ironic
+
 fmt:
 	go fmt ./ironic .
 
