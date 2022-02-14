@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -245,6 +247,10 @@ func configureProvider(schema *schema.ResourceData) (interface{}, error) {
 	}
 	log.Printf("[DEBUG] Ironic endpoint is %s", url)
 
+	if err := waitForICC(url); err != nil {
+		return nil, err
+	}
+
 	authStrategy := schema.Get("auth_strategy").(string)
 
 	if authStrategy == "http_basic" {
@@ -311,6 +317,37 @@ func configureProvider(schema *schema.ResourceData) (interface{}, error) {
 	clients.timeout = schema.Get("timeout").(int)
 
 	return &clients, nil
+}
+
+// Checks if Image Customization container is up and running
+func waitForICC(ironicEndpoint string) error {
+	log.Printf("[INFO] Waiting for Image Customization server...")
+
+	u, err := url.Parse(ironicEndpoint)
+	if err != nil {
+		return err
+	}
+	iccUrl, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return err
+	}
+
+	timeout := time.After(10 * time.Minute)
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("the Image Customization server is not available")
+		default:
+			log.Printf("[DEBUG] Waiting for Image Customization to become available...")
+			conn, _ := net.DialTimeout("tcp", net.JoinHostPort(iccUrl, "8084"), 5*time.Second)
+			if conn != nil {
+				log.Printf("[DEBUG] Image Customization is now available!")
+				defer conn.Close()
+				return nil
+			}
+			time.Sleep(15 * time.Second)
+		}
+	}
 }
 
 // Retries an API forever until it responds.
