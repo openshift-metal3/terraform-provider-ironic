@@ -14,7 +14,7 @@ services:
 before_install:
   - sudo apt-get install -y genisoimage
 before_script:
-  - docker run -d --net host --privileged --name mariadb --entrypoint /bin/runmariadb quay.io/metal3-io/ironic:master
+  - docker run -d --net host --privileged --name mariadb quay.io/metal3-io/mariadb:main
   - docker run -d --net host --name ironic-api --entrypoint /bin/runironic-api -e "PROVISIONING_IP=127.0.0.1" quay.io/metal3-io/ironic:master
   - docker run -d --net host --name ironic-conductor --entrypoint /bin/runironic-conductor -e "PROVISIONING_IP=127.0.0.1" quay.io/metal3-io/ironic:master
   - docker run -d --net host --privileged -e "PROVISIONING_IP=127.0.0.1" quay.io/metal3-io/ironic-inspector:master
