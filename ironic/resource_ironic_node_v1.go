@@ -260,7 +260,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 		}
 
 		var cleanSteps []nodes.CleanStep
-		if cleanSteps, err = buildManualCleaningSteps(d); err != nil {
+		if cleanSteps, err = buildManualCleaningSteps(d.Get("raid_interface").(string), d.Get("raid_config").(string), d.Get("bios_settings").(string)); err != nil {
 			return fmt.Errorf("fail to build raid clean steps: %s", err)
 		}
 
@@ -656,13 +656,10 @@ func setRAIDConfig(client *gophercloud.ServiceClient, d *schema.ResourceData) (e
 }
 
 // buildManualCleaningSteps builds the clean steps for RAID and BIOS configuration
-func buildManualCleaningSteps(d *schema.ResourceData) (cleanSteps []nodes.CleanStep, err error) {
+func buildManualCleaningSteps(raidInterface, raidConfig, biosSetings string) (cleanSteps []nodes.CleanStep, err error) {
 	var targetRaid *metal3v1alpha1.RAIDConfig
 	var settings []map[string]string
 
-	raidInterface := d.Get("raid_interface").(string)
-
-	raidConfig := d.Get("raid_config").(string)
 	if raidConfig != "" {
 		if err = json.Unmarshal([]byte(raidConfig), &targetRaid); err != nil {
 			return nil, err
@@ -676,7 +673,6 @@ func buildManualCleaningSteps(d *schema.ResourceData) (cleanSteps []nodes.CleanS
 		cleanSteps = append(cleanSteps, raidCleanSteps...)
 	}
 
-	biosSetings := d.Get("bios_settings").(string)
 	if biosSetings != "" {
 		if err = json.Unmarshal([]byte(biosSetings), &settings); err != nil {
 			return nil, err
