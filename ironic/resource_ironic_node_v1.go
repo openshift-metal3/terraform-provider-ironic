@@ -14,11 +14,6 @@ import (
 	"github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic"
 )
 
-const (
-	noRAIDInterface       string = "no-raid"
-	softwareRAIDInterface string = "agent"
-)
-
 // Schema resource definition for an Ironic node.
 func resourceNodeV1() *schema.Resource {
 	return &schema.Resource{
@@ -616,25 +611,25 @@ func changePowerState(client *gophercloud.ServiceClient, d *schema.ResourceData,
 // setRAIDConfig calls ironic's API to send request to change a Node's RAID config.
 func setRAIDConfig(client *gophercloud.ServiceClient, d *schema.ResourceData) (err error) {
 	var logicalDisks []nodes.LogicalDisk
-	var raid *metal3v1alpha1.RAIDConfig
+	var targetRAID *metal3v1alpha1.RAIDConfig
 
 	raidConfig := d.Get("raid_config").(string)
 	if raidConfig == "" {
 		return nil
 	}
 
-	err = json.Unmarshal([]byte(raidConfig), &raid)
+	err = json.Unmarshal([]byte(raidConfig), &targetRAID)
 	if err != nil {
 		return
 	}
 
-	err = checkRAIDConfigure(d.Get("raid_interface").(string), raid)
+	err = ironic.CheckRAIDInterface(d.Get("raid_interface").(string), targetRAID)
 	if err != nil {
 		return
 	}
 
 	// Build target for RAID configuration steps
-	logicalDisks, err = ironic.BuildTargetRAIDCfg(raid)
+	logicalDisks, err = ironic.BuildTargetRAIDCfg(targetRAID)
 	if len(logicalDisks) == 0 || err != nil {
 		return
 	}
@@ -657,16 +652,16 @@ func setRAIDConfig(client *gophercloud.ServiceClient, d *schema.ResourceData) (e
 
 // buildManualCleaningSteps builds the clean steps for RAID and BIOS configuration
 func buildManualCleaningSteps(raidInterface, raidConfig, biosSetings string) (cleanSteps []nodes.CleanStep, err error) {
-	var targetRaid *metal3v1alpha1.RAIDConfig
+	var targetRAID *metal3v1alpha1.RAIDConfig
 	var settings []map[string]string
 
 	if raidConfig != "" {
-		if err = json.Unmarshal([]byte(raidConfig), &targetRaid); err != nil {
+		if err = json.Unmarshal([]byte(raidConfig), &targetRAID); err != nil {
 			return nil, err
 		}
 
 		// Build raid clean steps
-		raidCleanSteps, err := ironic.BuildRAIDCleanSteps(raidInterface, targetRaid, nil)
+		raidCleanSteps, err := ironic.BuildRAIDCleanSteps(raidInterface, targetRAID, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -691,22 +686,4 @@ func buildManualCleaningSteps(raidInterface, raidConfig, biosSetings string) (cl
 	}
 
 	return
-}
-
-func checkRAIDConfigure(raidInterface string, raid *metal3v1alpha1.RAIDConfig) error {
-	switch raidInterface {
-	case noRAIDInterface:
-		if raid != nil && (len(raid.HardwareRAIDVolumes) != 0 || len(raid.SoftwareRAIDVolumes) != 0) {
-			return fmt.Errorf("raid settings are defined, but the node's driver %s does not support RAID", raidInterface)
-		}
-	case softwareRAIDInterface:
-		if raid != nil && len(raid.HardwareRAIDVolumes) != 0 {
-			return fmt.Errorf("node's driver %s does not support hardware RAID", raidInterface)
-		}
-	default:
-		if raid != nil && len(raid.HardwareRAIDVolumes) == 0 && len(raid.SoftwareRAIDVolumes) != 0 {
-			return fmt.Errorf("node's driver %s does not support software RAID", raidInterface)
-		}
-	}
-	return nil
 }

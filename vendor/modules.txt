@@ -286,7 +286,7 @@ github.com/mattn/go-colorable
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/metal3-io/baremetal-operator v0.0.0-20220216092208-3612e86973f1
+# github.com/metal3-io/baremetal-operator v0.0.0-20220310151803-2b47127ed7ae
 ## explicit
 github.com/metal3-io/baremetal-operator/pkg/hardware
 github.com/metal3-io/baremetal-operator/pkg/provisioner
@@ -294,11 +294,10 @@ github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic
 github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic/clients
 github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic/devicehints
 github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic/hardwaredetails
-# github.com/metal3-io/baremetal-operator/apis v0.0.0 => github.com/metal3-io/baremetal-operator/apis v0.0.0-20220216092208-3612e86973f1
+# github.com/metal3-io/baremetal-operator/apis v0.0.0 => github.com/metal3-io/baremetal-operator/apis v0.0.0-20220310151803-2b47127ed7ae
 ## explicit
 github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1
-# github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0 => github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0-20220216092208-3612e86973f1
-## explicit
+# github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0 => github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0-20220310151803-2b47127ed7ae
 github.com/metal3-io/baremetal-operator/pkg/hardwareutils/bmc
 # github.com/mitchellh/cli v1.1.2
 github.com/mitchellh/cli
@@ -867,5 +866,5 @@ sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
-# github.com/metal3-io/baremetal-operator/apis => github.com/metal3-io/baremetal-operator/apis v0.0.0-20220216092208-3612e86973f1
-# github.com/metal3-io/baremetal-operator/pkg/hardwareutils => github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0-20220216092208-3612e86973f1
+# github.com/metal3-io/baremetal-operator/apis => github.com/metal3-io/baremetal-operator/apis v0.0.0-20220310151803-2b47127ed7ae
+# github.com/metal3-io/baremetal-operator/pkg/hardwareutils => github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0-20220310151803-2b47127ed7ae
