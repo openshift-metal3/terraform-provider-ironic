@@ -19,11 +19,12 @@ type provisionStateWorkflow struct {
 
 	configDrive interface{}
 	deploySteps []nodes.DeployStep
+	cleanSteps  []nodes.CleanStep
 }
 
 // ChangeProvisionStateToTarget drives Ironic's state machine through the process to reach our desired end state. This requires multiple
 // possibly long-running steps.  If required, we'll build a config drive ISO for deployment.
-func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string, target nodes.TargetProvisionState, configDrive interface{}, deploySteps []nodes.DeployStep) error {
+func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string, target nodes.TargetProvisionState, configDrive interface{}, deploySteps []nodes.DeployStep, cleanSteps []nodes.CleanStep) error {
 	// Run the provisionStateWorkflow - this could take a while
 	wf := provisionStateWorkflow{
 		target:      target,
@@ -32,6 +33,7 @@ func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string
 		uuid:        uuid,
 		configDrive: configDrive,
 		deploySteps: deploySteps,
+		cleanSteps:  cleanSteps,
 	}
 
 	return wf.run()
@@ -113,7 +115,7 @@ func (workflow *provisionStateWorkflow) toClean() (bool, error) {
 		return true, err
 	}
 	if workflow.node.ProvisionState != string(nodes.Manageable) {
-		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
 			return true, err
 		}
 	}
@@ -152,7 +154,7 @@ func (workflow *provisionStateWorkflow) toInspect() (bool, error) {
 		return true, err
 	}
 	if workflow.node.ProvisionState != string(nodes.Manageable) {
-		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
 			return true, err
 		}
 	}
@@ -285,8 +287,8 @@ func (workflow *provisionStateWorkflow) buildProvisionStateOpts(target nodes.Tar
 		}
 	}
 	if target == "clean" {
-		if workflow.configDrive != nil {
-			opts.CleanSteps = workflow.configDrive.([]nodes.CleanStep)
+		if workflow.cleanSteps != nil {
+			opts.CleanSteps = workflow.cleanSteps
 		} else {
 			opts.CleanSteps = []nodes.CleanStep{}
 		}

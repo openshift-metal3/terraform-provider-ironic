@@ -243,7 +243,7 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 
 	// Make node manageable
 	if d.Get("manage").(bool) || d.Get("clean").(bool) || d.Get("inspect").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not manage: %s", err)
 		}
 	}
@@ -259,21 +259,21 @@ func resourceNodeV1Create(d *schema.ResourceData, meta interface{}) error {
 			return fmt.Errorf("fail to build raid clean steps: %s", err)
 		}
 
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", cleanSteps, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", nil, nil, cleanSteps); err != nil {
 			return fmt.Errorf("could not clean: %s", err)
 		}
 	}
 
 	// Inspect node
 	if d.Get("inspect").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not inspect: %s", err)
 		}
 	}
 
 	// Make node available
 	if d.Get("available").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not make node available: %s", err)
 		}
 	}
@@ -444,7 +444,7 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 	if (d.HasChange("manage") && d.Get("manage").(bool)) ||
 		(d.HasChange("clean") && d.Get("clean").(bool)) ||
 		(d.HasChange("inspect") && d.Get("inspect").(bool)) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "manage", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not manage: %s", err)
 		}
 	}
@@ -458,21 +458,21 @@ func resourceNodeV1Update(d *schema.ResourceData, meta interface{}) error {
 
 	// Clean node
 	if d.HasChange("clean") && d.Get("clean").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "clean", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not clean: %s", err)
 		}
 	}
 
 	// Inspect node
 	if d.HasChange("inspect") && d.Get("inspect").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "inspect", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not inspect: %s", err)
 		}
 	}
 
 	// Make node available
 	if d.HasChange("available") && d.Get("available").(bool) {
-		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil, nil); err != nil {
+		if err := ChangeProvisionStateToTarget(client, d.Id(), "provide", nil, nil, nil); err != nil {
 			return fmt.Errorf("could not make node available: %s", err)
 		}
 	}
@@ -503,7 +503,7 @@ func resourceNodeV1Delete(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	if err := ChangeProvisionStateToTarget(client, d.Id(), "deleted", nil, nil); err != nil {
+	if err := ChangeProvisionStateToTarget(client, d.Id(), "deleted", nil, nil, nil); err != nil {
 		return err
 	}
 
