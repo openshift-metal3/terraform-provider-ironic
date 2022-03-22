@@ -4,6 +4,7 @@ package ironic
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/gophercloud/gophercloud"
@@ -171,4 +172,107 @@ func testAccNodeResource(extraValue string) string {
 
 			%s
 		}`, extraValue)
+}
+
+func TestBuildManualCleaningSteps(t *testing.T) {
+	cases := []struct {
+		Scenario      string
+		RAIDInterface string
+		RAIDConfig    string
+		BIOSSettings  string
+		Expected      []nodes.CleanStep
+		ExpectedError bool
+	}{
+		{
+			Scenario:      "no raid and no bios",
+			RAIDInterface: "no-raid",
+			RAIDConfig:    "",
+			BIOSSettings:  "",
+			Expected:      nil,
+		},
+		{
+			Scenario:      "just raid",
+			RAIDInterface: "irmc",
+			RAIDConfig:    "{\"hardwareRAIDVolumes\":[{\"level\":\"0\",\"name\":\"raid0\"}],\"softwareRAIDVolumes\":null}",
+			BIOSSettings:  "",
+			Expected: []nodes.CleanStep{
+				{
+					Interface: "raid",
+					Step:      "delete_configuration",
+				},
+				{
+					Interface: "raid",
+					Step:      "create_configuration",
+				},
+			},
+		},
+		{
+			Scenario:      "just bios",
+			RAIDInterface: "irmc",
+			RAIDConfig:    "",
+			BIOSSettings:  "[{\"name\":\"cpu_vt_enabled\",\"value\":\"False\"},{\"name\":\"hyper_threading_enabled\",\"value\":\"True\"}]",
+			Expected: []nodes.CleanStep{
+				{
+					Interface: "bios",
+					Step:      "apply_configuration",
+					Args: map[string]interface{}{
+						"settings": []map[string]string{
+							{
+								"name":  "cpu_vt_enabled",
+								"value": "False",
+							},
+							{
+								"name":  "hyper_threading_enabled",
+								"value": "True",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Scenario:      "raid and bios",
+			RAIDInterface: "irmc",
+			RAIDConfig:    "{\"hardwareRAIDVolumes\":[{\"level\":\"0\",\"name\":\"raid0\"}],\"softwareRAIDVolumes\":null}",
+			BIOSSettings:  "[{\"name\":\"cpu_vt_enabled\",\"value\":\"False\"},{\"name\":\"hyper_threading_enabled\",\"value\":\"True\"}]",
+			Expected: []nodes.CleanStep{
+				{
+					Interface: "raid",
+					Step:      "delete_configuration",
+				},
+				{
+					Interface: "raid",
+					Step:      "create_configuration",
+				},
+				{
+					Interface: "bios",
+					Step:      "apply_configuration",
+					Args: map[string]interface{}{
+						"settings": []map[string]string{
+							{
+								"name":  "cpu_vt_enabled",
+								"value": "False",
+							},
+							{
+								"name":  "hyper_threading_enabled",
+								"value": "True",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Scenario, func(t *testing.T) {
+			step, err := buildManualCleaningSteps(c.RAIDInterface, c.RAIDConfig, c.BIOSSettings)
+			if !reflect.DeepEqual(c.Expected, step) {
+				t.Errorf("expected: %v, got: %v", c.Expected, step)
+			}
+			if (err != nil) != c.ExpectedError {
+				t.Errorf("got unexpected error: %v", err)
+			}
+		})
+	}
 }

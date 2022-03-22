@@ -475,7 +475,6 @@ func (client *ProviderClient) doRequest(method, url string, options *RequestOpts
 				if err != nil {
 					e := &ErrUnableToReauthenticate{}
 					e.ErrOriginal = respErr
-					e.ErrReauth = err
 					return nil, e
 				}
 				if options.RawBody != nil {
