@@ -4,23 +4,24 @@
 package ironic
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"testing"
 
 	gth "github.com/gophercloud/gophercloud/testhelper"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
-var testAccProviders map[string]terraform.ResourceProvider
+var testAccProviders map[string]*schema.Provider
 var testAccProvider *schema.Provider
 
 func init() {
-	testAccProvider = Provider().(*schema.Provider)
+	testAccProvider = Provider()
 
-	testAccProviders = map[string]terraform.ResourceProvider{
+	testAccProviders = map[string]*schema.Provider{
 		"ironic": testAccProvider,
 	}
 }
@@ -44,8 +45,10 @@ func TestProvider(t *testing.T) {
 		"url":          "http://localhost:6385/v1",
 		"microversion": "1.52",
 	}
-	err := p.Configure(terraform.NewResourceConfigRaw(raw))
-	th.AssertNoError(t, err)
+	diags := p.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
 }
 
 func TestProvider_clientTimeout(t *testing.T) {
@@ -60,11 +63,13 @@ func TestProvider_clientTimeout(t *testing.T) {
 		"url":     gth.Server.URL + "/",
 		"timeout": 90,
 	}
-	err := p.Configure(terraform.NewResourceConfigRaw(raw))
-	th.AssertNoError(t, err)
+	diags := p.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
 
-	client := p.(*schema.Provider).Meta().(*Clients)
-	_, err = client.GetIronicClient()
+	client := p.Meta().(*Clients)
+	_, err := client.GetIronicClient()
 	th.AssertError(t, err, "could not contact Ironic API")
 }
 
@@ -77,9 +82,10 @@ func TestProvider_urlRequired(t *testing.T) {
 	ironicEndpoint := os.Getenv("IRONIC_ENDPOINT")
 	os.Unsetenv("IRONIC_ENDPOINT")
 
-	err := p.Configure(terraform.NewResourceConfigRaw(raw))
-	th.AssertError(t, err, "url is required")
-
+	diags := p.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	if !diags.HasError() {
+		t.Fatal(diags)
+	}
 	os.Setenv("IRONIC_ENDPOINT", ironicEndpoint)
 }
 

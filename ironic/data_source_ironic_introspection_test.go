@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	gth "github.com/gophercloud/gophercloud/testhelper"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	th "github.com/openshift-metal3/terraform-provider-ironic/testhelper"
 )
 
