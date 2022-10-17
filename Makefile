@@ -18,10 +18,12 @@ install: default
 	mv terraform-provider-ironic ${TERRAFORM_PLUGINS}
 
 fmt:
+	find . -name "gofmt"
 	gofmt -s -d -e ./ironic
 
 tools:
-	go get golang.org/x/lint/golint
+	go get -v golang.org/x/lint/golint
+	find . -name "golint"
 
 lint: tools
 	go run golang.org/x/lint/golint -set_exit_status ./ironic .
