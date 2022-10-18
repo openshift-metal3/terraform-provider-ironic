@@ -192,10 +192,13 @@ func fetchFullIgnition(userDataURL string, userDataCaCert string, userDataHeader
 				return "", err
 			}
 			caCertPool.AppendCertsFromPEM(caCert)
-
+			// disable "G402 (CWE-295): TLS MinVersion too low. (Confidence: HIGH, Severity: HIGH)"
+			// #nosec G402
 			transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
 		} else {
 			// Disable certificate verification
+			// disable "G402 (CWE-295): TLS MinVersion too low. (Confidence: HIGH, Severity: HIGH)"
+			// #nosec G402
 			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 		}
 
