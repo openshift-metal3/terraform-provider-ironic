@@ -1,6 +1,7 @@
 package ironic
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -9,13 +10,16 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/nodes"
 )
 
+const maxRetryNumber = 3
+
 // provisionStateWorkflow is used to track state through the process of updating's it's provision state
 type provisionStateWorkflow struct {
-	client *gophercloud.ServiceClient
-	node   nodes.Node
-	uuid   string
-	target nodes.TargetProvisionState
-	wait   time.Duration
+	client      *gophercloud.ServiceClient
+	node        nodes.Node
+	uuid        string
+	target      nodes.TargetProvisionState
+	wait        time.Duration
+	retryNumber int
 
 	configDrive interface{}
 	deploySteps []nodes.DeployStep
@@ -34,6 +38,7 @@ func ChangeProvisionStateToTarget(client *gophercloud.ServiceClient, uuid string
 		configDrive: configDrive,
 		deploySteps: deploySteps,
 		cleanSteps:  cleanSteps,
+		retryNumber: maxRetryNumber,
 	}
 
 	return wf.run()
@@ -86,6 +91,20 @@ func (workflow *provisionStateWorkflow) next() (bool, error) {
 	}
 }
 
+func (workflow *provisionStateWorkflow) maybeRetry(state string) (bool, error) {
+	if workflow.retryNumber == 0 {
+		return true, errors.New(state)
+	}
+
+	workflow.retryNumber--
+	log.Printf("[DEBUG] Node %s is '%s', going to retry", workflow.uuid, state)
+
+	if state == "deploy failed" {
+		return workflow.changeProvisionState(nodes.TargetDeleted)
+	}
+	return workflow.changeProvisionState(nodes.TargetManage)
+}
+
 // Change a node to "manageable" stable
 func (workflow *provisionStateWorkflow) toManageable() (bool, error) {
 	switch state := workflow.node.ProvisionState; state {
@@ -93,11 +112,12 @@ func (workflow *provisionStateWorkflow) toManageable() (bool, error) {
 		// We're done!
 		return true, nil
 	case "enroll",
-		"adopt failed",
-		"clean failed",
-		"inspect failed",
 		"available":
 		return workflow.changeProvisionState(nodes.TargetManage)
+	case "adopt failed",
+		"clean failed",
+		"inspect failed":
+		return workflow.maybeRetry(state)
 	case "verifying":
 		// Not done, no error - Ironic is working
 		return false, nil
@@ -200,6 +220,8 @@ func (workflow *provisionStateWorkflow) toAvailable() (bool, error) {
 		// From manageable, we can go to provide
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'available'", workflow.uuid, state)
 		return workflow.changeProvisionState(nodes.TargetProvide)
+	case "deploy failed":
+		return workflow.maybeRetry(state)
 	default:
 		// Otherwise we have to get into manageable state first
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'manageable'.", workflow.uuid, state)
@@ -254,10 +276,11 @@ func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
 		return false, nil
 	case "active",
 		"wait call-back",
-		"deploy failed",
 		"error":
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'deleted'.", workflow.uuid, state)
 		return workflow.changeProvisionState(nodes.TargetDeleted)
+	case "deploy failed":
+		return workflow.maybeRetry(state)
 	case "inspect failed",
 		"clean failed":
 		// We have to get into manageable state first
