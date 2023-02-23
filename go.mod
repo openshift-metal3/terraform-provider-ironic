@@ -82,9 +82,9 @@ require (
 	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
