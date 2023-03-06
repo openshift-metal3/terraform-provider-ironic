@@ -24,6 +24,8 @@ type provisionStateWorkflow struct {
 	configDrive interface{}
 	deploySteps []nodes.DeployStep
 	cleanSteps  []nodes.CleanStep
+
+	operationStarted bool
 }
 
 // ChangeProvisionStateToTarget drives Ironic's state machine through the process to reach our desired end state. This requires multiple
@@ -91,12 +93,14 @@ func (workflow *provisionStateWorkflow) next() (bool, error) {
 	}
 }
 
-func (workflow *provisionStateWorkflow) maybeRetry(state string) (bool, error) {
+func (workflow *provisionStateWorkflow) maybeRetry() (bool, error) {
+	state := workflow.node.ProvisionState
 	if workflow.retryNumber == 0 {
 		return true, errors.New(state)
 	}
 
 	workflow.retryNumber--
+	workflow.operationStarted = false
 	log.Printf("[DEBUG] Node %s is '%s', going to retry", workflow.uuid, state)
 
 	if state == "deploy failed" {
@@ -117,7 +121,7 @@ func (workflow *provisionStateWorkflow) toManageable() (bool, error) {
 	case "adopt failed",
 		"clean failed",
 		"inspect failed":
-		return workflow.maybeRetry(state)
+		return workflow.maybeRetry()
 	case "verifying":
 		// Not done, no error - Ironic is working
 		return false, nil
@@ -129,79 +133,71 @@ func (workflow *provisionStateWorkflow) toManageable() (bool, error) {
 
 // Clean a node
 func (workflow *provisionStateWorkflow) toClean() (bool, error) {
-	// Node must be manageable first
-	err := workflow.reloadNode()
-	if err != nil {
-		return true, err
-	}
-	if workflow.node.ProvisionState != string(nodes.Manageable) {
-		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
-			return true, err
+	if !workflow.operationStarted {
+		// Node must be manageable first
+		if workflow.node.ProvisionState != string(nodes.Manageable) {
+			if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
+				return true, err
+			}
 		}
-	}
 
-	// Set target to clean
-	_, err = workflow.changeProvisionState(nodes.TargetClean)
-	if err != nil {
-		return true, err
-	}
-
-	for {
-		err = workflow.reloadNode()
+		// Set target to clean
+		_, err := workflow.changeProvisionState(nodes.TargetClean)
 		if err != nil {
 			return true, err
 		}
-		state := workflow.node.ProvisionState
 
-		switch state {
-		case "manageable":
-			return true, nil
-		case "cleaning",
-			"clean wait":
-			// Not done, no error - Ironic is working
-			continue
-		default:
-			return true, fmt.Errorf("could not clean node, node is currently '%s'", state)
-		}
+		// Marking that we should not return to manageable any more
+		workflow.operationStarted = true
+		return false, nil
+	}
+
+	switch workflow.node.ProvisionState {
+	case "manageable":
+		return true, nil
+	case "cleaning",
+		"clean wait":
+		// Not done, no error - Ironic is working
+		return false, nil
+	case "clean failed":
+		return workflow.maybeRetry()
+	default:
+		return true, fmt.Errorf("could not clean node, node is currently '%s'", workflow.node.ProvisionState)
 	}
 }
 
 // Inspect a node
 func (workflow *provisionStateWorkflow) toInspect() (bool, error) {
-	// Node must be manageable first
-	err := workflow.reloadNode()
-	if err != nil {
-		return true, err
-	}
-	if workflow.node.ProvisionState != string(nodes.Manageable) {
-		if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
-			return true, err
+	if !workflow.operationStarted {
+		// Node must be manageable first
+		if workflow.node.ProvisionState != string(nodes.Manageable) {
+			if err := ChangeProvisionStateToTarget(workflow.client, workflow.uuid, nodes.TargetManage, nil, nil, nil); err != nil {
+				return true, err
+			}
 		}
-	}
 
-	// Set target to inspect
-	_, err = workflow.changeProvisionState(nodes.TargetInspect)
-	if err != nil {
-		return true, err
-	}
-
-	for {
-		err = workflow.reloadNode()
+		// Set target to inspect
+		_, err := workflow.changeProvisionState(nodes.TargetInspect)
 		if err != nil {
 			return true, err
 		}
-		state := workflow.node.ProvisionState
 
-		switch state {
-		case "manageable":
-			return true, nil
-		case "inspecting",
-			"inspect wait":
-			// Not done, no error - Ironic is working
-			continue
-		default:
-			return true, fmt.Errorf("could not inspect node, node is currently '%s'", state)
-		}
+		// Marking that we should not return to manageable any more
+		workflow.operationStarted = true
+		return false, nil
+	}
+
+	switch workflow.node.ProvisionState {
+	case "manageable":
+		return true, nil
+	case "inspecting",
+		"inspect wait":
+		// Not done, no error - Ironic is working
+		return false, nil
+	case "inspect failed":
+		return workflow.maybeRetry()
+	default:
+		return true, fmt.Errorf("could not inspect node, node is currently '%s'", workflow.node.ProvisionState)
 	}
 }
 
@@ -221,7 +217,7 @@ func (workflow *provisionStateWorkflow) toAvailable() (bool, error) {
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'available'", workflow.uuid, state)
 		return workflow.changeProvisionState(nodes.TargetProvide)
 	case "deploy failed":
-		return workflow.maybeRetry(state)
+		return workflow.maybeRetry()
 	default:
 		// Otherwise we have to get into manageable state first
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'manageable'.", workflow.uuid, state)
@@ -280,7 +276,7 @@ func (workflow *provisionStateWorkflow) toDeleted() (bool, error) {
 		log.Printf("[DEBUG] Node %s is '%s', going to change to 'deleted'.", workflow.uuid, state)
 		return workflow.changeProvisionState(nodes.TargetDeleted)
 	case "deploy failed":
-		return workflow.maybeRetry(state)
+		return workflow.maybeRetry()
 	case "inspect failed",
 		"clean failed":
 		// We have to get into manageable state first
