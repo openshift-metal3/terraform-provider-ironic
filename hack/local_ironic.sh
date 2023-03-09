@@ -8,11 +8,31 @@ else
     CONTAINER_RUNTIME=docker
 fi
 
-sudo $CONTAINER_RUNTIME run -d --net host --privileged --name ironic \
-    --entrypoint /bin/runironic -e "PROVISIONING_IP=127.0.0.1" quay.io/metal3-io/ironic:master
-sudo $CONTAINER_RUNTIME run -d --net host --privileged --name ironic-inspector \
-    -e "PROVISIONING_IP=127.0.0.1" quay.io/metal3-io/ironic-inspector:master
+IMAGE=${IMAGE:-quay.io/metal3-io/ironic:main}
 
-for p in 6385 5050; do
-  nc -z -w 60 127.0.0.1 ${p}
+sudo $CONTAINER_RUNTIME run -d --net host --privileged --name ironic \
+    --entrypoint /bin/runironic -e "PROVISIONING_IP=127.0.0.1" $IMAGE
+sudo $CONTAINER_RUNTIME run -d --net host --privileged --name ironic-inspector \
+    --entrypoint /bin/runironic-inspector -e "PROVISIONING_IP=127.0.0.1" $IMAGE
+
+for attempt in {1..30}; do
+    sleep 2
+
+    if ! curl -I http://127.0.0.1:6385; then
+        if [[ $attempt == 30 ]]; then
+            exit 1
+        else
+            continue
+        fi
+    fi
+
+    if ! curl -I http://127.0.0.1:5050; then
+        if [[ $attempt == 30 ]]; then
+            exit 1
+        else
+            continue
+        fi
+    fi
+
+    break
 done
