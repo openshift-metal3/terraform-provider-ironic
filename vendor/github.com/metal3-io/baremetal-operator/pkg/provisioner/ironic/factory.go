@@ -3,13 +3,13 @@ package ironic
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
-	logz "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/metal3-io/baremetal-operator/pkg/provisioner"
 	"github.com/metal3-io/baremetal-operator/pkg/provisioner/ironic/clients"
@@ -26,10 +26,10 @@ type ironicProvisionerFactory struct {
 	clientInspector *gophercloud.ServiceClient
 }
 
-func NewProvisionerFactory(havePreprovImgBuilder bool) provisioner.Factory {
-	factory := ironicProvisionerFactory{}
-
-	factory.log = logz.New().WithName("provisioner").WithName("ironic")
+func NewProvisionerFactory(logger logr.Logger, havePreprovImgBuilder bool) provisioner.Factory {
+	factory := ironicProvisionerFactory{
+		log: logger.WithName("ironic"),
+	}
 
 	err := factory.init(havePreprovImgBuilder)
 	if err != nil {
@@ -151,6 +151,17 @@ func loadConfigFromEnv(havePreprovImgBuilder bool) (ironicConfig, error) {
 			return c, fmt.Errorf("Invalid value for variable LIVE_ISO_FORCE_PERSISTENT_BOOT_DEVICE, must be one of Default, Always or Never")
 		}
 		c.liveISOForcePersistentBootDevice = forcePersistentBootDevice
+	}
+
+	c.externalURL = os.Getenv("IRONIC_EXTERNAL_URL_V6")
+
+	// Let's see if externalURL looks like a URL
+	if c.externalURL != "" {
+		_, externalURLParseErr := url.Parse(c.externalURL)
+
+		if externalURLParseErr != nil {
+			return c, externalURLParseErr
+		}
 	}
 
 	return c, nil
