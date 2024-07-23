@@ -107,12 +107,12 @@ func resourcePortV1Read(d *schema.ResourceData, meta interface{}) error {
 	return d.Set("is_smart_nic", port.IsSmartNIC)
 }
 
-func resourcePortV1Update(d *schema.ResourceData, meta interface{}) error {
+func resourcePortV1Update(_ *schema.ResourceData, _ interface{}) error {
 	return nil
 
 }
 
-func resourcePortV1Delete(d *schema.ResourceData, meta interface{}) error {
+func resourcePortV1Delete(_ *schema.ResourceData, _ interface{}) error {
 	return nil
 
 }
