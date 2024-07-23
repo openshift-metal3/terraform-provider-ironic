@@ -58,7 +58,7 @@ func resourceNodeV1() *schema.Resource {
 			"driver_info": {
 				Type:     schema.TypeMap,
 				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+				DiffSuppressFunc: func(k, old, _ string, _ *schema.ResourceData) bool {
 					/* FIXME: Password updates aren't considered. How can I know if the *local* data changed? */
 					/* FIXME: Support drivers other than IPMI */
 					if k == "driver_info.ipmi_password" && old == "******" {
@@ -168,7 +168,7 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 
 				// If power_state is same as target_power_state, we have no changes to apply
-				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+				DiffSuppressFunc: func(_, _, new string, d *schema.ResourceData) bool {
 					return new == d.Get("power_state").(string)
 				},
 			},
