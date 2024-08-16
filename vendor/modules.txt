@@ -69,9 +69,10 @@ github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
-# github.com/gophercloud/gophercloud v0.22.0
-## explicit; go 1.13
+# github.com/gophercloud/gophercloud v1.14.0
+## explicit; go 1.14
 github.com/gophercloud/gophercloud
+github.com/gophercloud/gophercloud/openstack
 github.com/gophercloud/gophercloud/openstack/baremetal/httpbasic
 github.com/gophercloud/gophercloud/openstack/baremetal/noauth
 github.com/gophercloud/gophercloud/openstack/baremetal/v1/allocations
@@ -81,6 +82,12 @@ github.com/gophercloud/gophercloud/openstack/baremetal/v1/ports
 github.com/gophercloud/gophercloud/openstack/baremetalintrospection/httpbasic
 github.com/gophercloud/gophercloud/openstack/baremetalintrospection/noauth
 github.com/gophercloud/gophercloud/openstack/baremetalintrospection/v1/introspection
+github.com/gophercloud/gophercloud/openstack/identity/v2/tenants
+github.com/gophercloud/gophercloud/openstack/identity/v2/tokens
+github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/ec2tokens
+github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/oauth1
+github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
+github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
 github.com/gophercloud/gophercloud/testhelper
 # github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70

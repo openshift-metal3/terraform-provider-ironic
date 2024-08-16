@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/httpbasic"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/noauth"
 	"github.com/gophercloud/gophercloud/openstack/baremetal/v1/drivers"
@@ -175,8 +176,7 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("IRONIC_AUTH_STRATEGY", "noauth"),
 				Description: descriptions["auth_strategy"],
 				ValidateFunc: validation.StringInSlice([]string{
-					"noauth", "http_basic",
-				}, false),
+					"noauth", "http_basic", "keystone"}, false),
 			},
 			"ironic_username": {
 				Type:        schema.TypeString,
@@ -204,6 +204,43 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("INSPECTOR_HTTP_BASIC_PASSWORD", ""),
 				Description: descriptions["inspector_username"],
 			},
+			"keystone_username": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_USERNAME", ""),
+				Description: descriptions["keystone_username"],
+			},
+			"keystone_password": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Sensitive:   true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_PASSWORD", ""),
+				Description: descriptions["keystone_password"],
+			},
+			"keystone_region": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_REGION_NAME", ""),
+				Description: descriptions["keystone_region"],
+			},
+			"user_domain_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_USER_DOMAIN_NAME", ""),
+				Description: descriptions["user_domain_name"],
+			},
+			"tenant_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_PROJECT_NAME", ""),
+				Description: descriptions["tenant_name"],
+			},
+			"tenant_id": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OS_PROJECT_ID", ""),
+				Description: descriptions["tenant_id"],
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"ironic_node_v1":       resourceNodeV1(),
@@ -226,11 +263,17 @@ func init() {
 		"inspector":          "The endpoint for Ironic inspector",
 		"microversion":       "The microversion to use for Ironic",
 		"timeout":            "Wait at least the specified number of seconds for the API to become available",
-		"auth_strategy":      "Determine the strategy to use for authentication with Ironic services, Possible values: noauth, http_basic. Defaults to noauth.",
+		"auth_strategy":      "Determine the strategy to use for authentication with Ironic services, Possible values: noauth, http_basic, keystone. Defaults to noauth.",
 		"ironic_username":    "Username to be used by Ironic when using `http_basic` authentication",
 		"ironic_password":    "Password to be used by Ironic when using `http_basic` authentication",
 		"inspector_username": "Username to be used by Ironic Inspector when using `http_basic` authentication",
 		"inspector_password": "Password to be used by Ironic Inspector when using `http_basic` authentication",
+		"keystone_username":  "Username to be used by Ironic when using `keystone` authentication",
+		"keystone_password":  "Password to be used by Ironic when using `keystone` authentication",
+		"keystone_region":    "Region to be used by Ironic when using `keystone` authentication",
+		"user_domain_name":   "Project ID to be used by Ironic when using `keystone` authentication",
+		"tenant_name":        "Project ID to be used by Ironic when using `keystone` authentication",
+		"tenant_id":          "Project ID to be used by Ironic when using `keystone` authentication",
 	}
 }
 
@@ -275,6 +318,62 @@ func configureProvider(schema *schema.ResourceData) (interface{}, error) {
 				IronicInspectorUser:         inspectorUser,
 				IronicInspectorUserPassword: inspectorPassword,
 			})
+
+			if err != nil {
+				return nil, err
+			}
+			clients.inspector = inspector
+		}
+
+	} else if authStrategy == "keystone" {
+		log.Printf("[DEBUG] Using keystone auth strategy")
+
+		// keystoneUser := schema.Get("keystone_username").(string)
+		// keystonePassword := schema.Get("keystone_password").(string)
+		// keystoneRegion := schema.Get("keystone_region").(string)
+		// url := schema.Get("url").(string)
+		// userDomainName := schema.Get("user_domain_name").(string)
+		// tenantName := schema.Get("tenant_name").(string)
+		// tenantId := schema.Get("tenant_id").(string)
+
+		// opts := gophercloud.AuthOptions{
+		// 	IdentityEndpoint: url,
+		// 	Username:         keystoneUser,
+		// 	Password:         keystonePassword,
+		// 	DomainName:       userDomainName,
+		// 	TenantName:       tenantName,
+		// 	TenantID:         tenantId,
+		// }
+
+		// provider, err := openstack.AuthenticatedClient(opts)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// eo := gophercloud.EndpointOpts{
+		// 	Region: keystoneRegion,
+		// }
+
+		opts, err := openstack.AuthOptionsFromEnv()
+		provider, err := openstack.AuthenticatedClient(opts)
+
+		eo := gophercloud.EndpointOpts{Region: "RegionOne"}
+
+		ironic, err := openstack.NewBareMetalV1(provider, eo)
+		if err != nil {
+			return nil, err
+		}
+
+		ironic.Microversion = schema.Get("microversion").(string)
+		clients.ironic = ironic
+
+		inspectorURL := schema.Get("inspector").(string)
+		if inspectorURL != "" {
+			// inspectorUser := schema.Get("inspector_username").(string)
+			// inspectorPassword := schema.Get("inspector_password").(string)
+			log.Printf("[DEBUG] Inspector endpoint is %s", inspectorURL)
+
+			inspector, err := openstack.NewBareMetalIntrospectionV1(provider, eo)
 
 			if err != nil {
 				return nil, err
