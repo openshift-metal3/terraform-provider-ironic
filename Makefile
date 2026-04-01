@@ -28,7 +28,7 @@ lint: $(GOLANGCI_LINT_BIN)
 
 $(GOLANGCI_LINT_BIN):
 	mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	GOBIN=$(BIN_DIR) go install -mod=mod github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 test:
 	go test -tags "${TAGS}" -v ./ironic
