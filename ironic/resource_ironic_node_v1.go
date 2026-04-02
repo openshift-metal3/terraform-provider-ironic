@@ -168,8 +168,8 @@ func resourceNodeV1() *schema.Resource {
 				Optional: true,
 
 				// If power_state is same as target_power_state, we have no changes to apply
-				DiffSuppressFunc: func(_, _, new string, d *schema.ResourceData) bool {
-					return new == d.Get("power_state").(string)
+				DiffSuppressFunc: func(_, _, newValue string, d *schema.ResourceData) bool {
+					return newValue == d.Get("power_state").(string)
 				},
 			},
 			"power_state_timeout": {

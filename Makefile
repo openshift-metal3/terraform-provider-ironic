@@ -2,7 +2,9 @@ LDFLAGS += -X main.version=$$(git describe --always --abbrev=40 --dirty)
 TEST?=$$(go list ./... |grep -v 'vendor')
 PKG_NAME=ironic
 TERRAFORM_PLUGINS=$(HOME)/.terraform.d/plugins
-GOPATH?=$$(go env GOPATH)
+BIN_DIR := $(shell pwd)/bin
+GOLANGCI_LINT_BIN := $(BIN_DIR)/golangci-lint
+GOLANGCI_LINT_VERSION ?= v1.64.8
 
 ifeq ("$(IRONIC_ENDPOINT)", "")
 	IRONIC_ENDPOINT := http://127.0.0.1:6385/
@@ -21,11 +23,12 @@ install: default
 fmt:
 	gofmt -s -d -e ./ironic
 
-lint :$(GOPATH)/golangci-lint
-	GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache/ $(GOPATH)/golangci-lint run ironic
+lint: $(GOLANGCI_LINT_BIN)
+	GOLANGCI_LINT_CACHE=/tmp/terraform-provider-ironic/golangci-lint-cache/ $(GOLANGCI_LINT_BIN) run ironic
 
-$(GOPATH)/golangci-lint:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH) v1.59.1
+$(GOLANGCI_LINT_BIN):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install -mod=mod github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 test:
 	go test -tags "${TAGS}" -v ./ironic
